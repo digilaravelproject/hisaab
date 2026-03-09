@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/src/extension_instance.dart';
-
+import 'package:credit_debit/core/theme/app_colors.dart';
 import 'package:get/get.dart';
+import 'package:credit_debit/core/models/language_model.dart';
 
 import '../../auth/screens/login_screen.dart';
 
@@ -26,57 +25,41 @@ class LanguageSelectionScreen extends StatelessWidget {
               /// Header
               Row(
                 children: [
-                  // InkWell(
-                  //   onTap: () => Get.back(),
-                  //   borderRadius: BorderRadius.circular(12),
-                  //   child: Container(
-                  //     padding: const EdgeInsets.all(10),
-                  //     decoration: BoxDecoration(
-                  //       color: Colors.grey.shade100,
-                  //       borderRadius: BorderRadius.circular(12),
-                  //     ),
-                  //     child: const Icon(
-                  //       Icons.arrow_back_ios_new_rounded,
-                  //       size: 18,
-                  //       color: Color(0xFF1E3A6F),
-                  //     ),
-                  //   ),
-                  // ),
-                  // const SizedBox(width: 16),
-                  const Text(
+                   Text(
                     "Select Language",
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1E3A6F),
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                      color: AppColors.primaryColor,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 8),
 
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "Choose your preferred language",
+                  "Choose your preferred language to continue",
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7A99),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.slate500,
                   ),
                 ),
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 32),
 
               /// Grid
               Expanded(
                 child: GridView.builder(
                   itemCount: controller.languages.length,
-                  gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 1.1, // Increased to make cards shorter
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -100,14 +83,14 @@ class LanguageSelectionScreen extends StatelessWidget {
                             BorderRadius.circular(16),
                             border: Border.all(
                               color: isSelected
-                                  ? const Color(0xFF1E3A6F)
+                                  ? AppColors.primaryColor
                                   : Colors.grey.shade200,
                               width: isSelected ? 2 : 1,
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: isSelected
-                                    ? const Color(0xFF1E3A6F)
+                                    ? AppColors.primaryColor
                                     .withOpacity(0.08)
                                     : Colors.black.withOpacity(0.02),
                                 blurRadius: 8,
@@ -122,46 +105,33 @@ class LanguageSelectionScreen extends StatelessWidget {
                             children: [
                               /// Symbol Box
                               Container(
-                                width: 45,
-                                height: 45,
+                                width: 36,
+                                height: 36,
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFF1E3A6F)
-                                      : Colors.grey[100],
-                                  borderRadius:
-                                  BorderRadius.circular(12),
+                                  color: isSelected ? AppColors.primaryColor : Colors.grey[100],
+                                  shape: BoxShape.circle,
                                 ),
                                 child: Center(
                                   child: Text(
                                     language.symbol,
                                     style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight:
-                                      FontWeight.w600,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : const Color(
-                                          0xFF1E3A6F),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? Colors.white : AppColors.primaryColor,
                                     ),
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
 
                               /// Name
                               Text(
                                 language.name,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? const Color(
-                                      0xFF1E3A6F)
-                                      : const Color(
-                                      0xFF4A5B7A),
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                  color: isSelected ? AppColors.primaryColor : const Color(0xFF4A5B7A),
                                 ),
                               ),
 
@@ -172,11 +142,8 @@ class LanguageSelectionScreen extends StatelessWidget {
                                 language.nativeName,
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: isSelected
-                                      ? const Color(
-                                      0xFF1E3A6F)
-                                      .withOpacity(0.7)
-                                      : Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                  color: isSelected ? AppColors.primaryColor.withOpacity(0.8) : Colors.grey.shade500,
                                 ),
                               ),
                             ],
@@ -206,7 +173,7 @@ class LanguageSelectionScreen extends StatelessWidget {
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                      const Color(0xFF1E3A6F),
+                      AppColors.primaryColor,
                       minimumSize:
                       const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
@@ -253,27 +220,10 @@ class LanguageController extends GetxController {
     Language(code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', symbol: 'த'),
     Language(code: 'te', name: 'Telugu', nativeName: 'తెలుగు', symbol: 'తె'),
     Language(code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', symbol: 'ಕ'),
-    Language(code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', symbol: 'മ'),
+    Language(code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', symbol: 'म'),
     Language(code: 'bn', name: 'Bengali', nativeName: 'বাংলা', symbol: 'ব'),
     Language(code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', symbol: 'ਪ'),
     Language(code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ', symbol: 'ଓ'),
     Language(code: 'as', name: 'Assamese', nativeName: 'অসমীয়া', symbol: 'অ'),
   ];
 }
-
-/// Model
-class Language {
-  final String code;
-  final String name;
-  final String nativeName;
-  final String symbol;
-
-  Language({
-    required this.code,
-    required this.name,
-    required this.nativeName,
-    required this.symbol,
-  });
-}
-
-/// Next Screen

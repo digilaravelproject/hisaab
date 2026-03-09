@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../../core/constants/dimensions.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/styles.dart';
+import '../../../routes/route_helper.dart';
 
 class BankAccountLinkingScreen extends StatefulWidget {
   const BankAccountLinkingScreen({super.key});
@@ -18,7 +19,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
       'last4': '4296',
       'type': 'Personal',
       'logo': Icons.account_balance,
-      'color': const Color(0xFF1E3A6F),
+      'color': AppColors.primaryColor,
     },
     {
       'bankName': 'ICICI Bank',
@@ -26,14 +27,14 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
       'type': 'Business',
       'businessName': 'My Farm',
       'logo': Icons.account_balance,
-      'color': const Color(0xFFF59E0B),
+      'color': AppColors.warningColor,
     },
     {
       'bankName': 'State Bank of India',
       'last4': '1044',
       'type': 'Personal',
       'logo': Icons.account_balance,
-      'color': const Color(0xFF1976D2),
+      'color': AppColors.infoColor,
     },
   ];
 
@@ -67,7 +68,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
                     children: [
                       const Text(
                         'Link Bank Account',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.slate800),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
@@ -76,7 +77,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text('Account Tag', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                  const Text('Account Tag', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate500)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -87,7 +88,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
                   ),
                   if (selectedTag == 'Business') ...[
                     const SizedBox(height: 20),
-                    const Text('Select Business', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                    const Text('Select Business', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate500)),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -126,9 +127,12 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
                           backgroundColor: AppColors.successColor,
                           colorText: Colors.white,
                         );
+                        Future.delayed(const Duration(seconds: 1), () {
+                          Get.offAllNamed(RouteHelper.getDashboardRoute());
+                        });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E3A6F),
+                        backgroundColor: AppColors.primaryColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),
@@ -151,14 +155,14 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1E3A6F) : Colors.grey[100],
+          color: isSelected ? AppColors.primaryColor : Colors.grey[100],
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: isSelected ? const Color(0xFF1E3A6F) : Colors.grey[300]!),
+          border: Border.all(color: isSelected ? AppColors.primaryColor : Colors.grey[300]!),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
+            color: isSelected ? Colors.white : AppColors.slate500,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -169,19 +173,25 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.slate50,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
-          onPressed: () => Get.back(),
+          icon: const Icon(Icons.arrow_back, color: AppColors.slate800),
+          onPressed: () => Get.offAllNamed(RouteHelper.getDashboardRoute()),
         ),
         title: const Text(
           'Linked Accounts',
-          style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.slate800, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: () => Get.offAllNamed(RouteHelper.getDashboardRoute()),
+            child: const Text('Skip', style: TextStyle(color: AppColors.primaryColor, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(20),
@@ -193,7 +203,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddBankSheet,
-        backgroundColor: const Color(0xFF1E3A6F),
+        backgroundColor: AppColors.primaryColor,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Add Bank', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
@@ -235,7 +245,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
               children: [
                 Text(
                   account['bankName'],
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800),
                 ),
                 Text(
                   '**** **** **** ${account['last4']}',
@@ -250,7 +260,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isBusiness ? const Color(0xFFF59E0B).withOpacity(0.1) : const Color(0xFF6366F1).withOpacity(0.1),
+                  color: isBusiness ? AppColors.warningColor.withOpacity(0.1) : AppColors.slate500.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -258,7 +268,7 @@ class _BankAccountLinkingScreenState extends State<BankAccountLinkingScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isBusiness ? const Color(0xFFD97706) : const Color(0xFF4F46E5),
+                    color: isBusiness ? AppColors.warningColor : AppColors.primaryColor,
                   ),
                 ),
               ),

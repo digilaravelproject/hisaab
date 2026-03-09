@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../theme/app_colors.dart';
@@ -15,6 +16,16 @@ class CustomSnackbar {
     final Color effectiveTextColor =
         textColor ?? (backgroundColor.computeLuminance() > 0.5 ? Colors.black : Colors.white);
 
+    // Using a more stable check to prevent LateInitializationError
+    try {
+      if (Get.isSnackbarOpen) {
+        // Only attempt to close if we are certain it's initialized
+        Get.closeCurrentSnackbar();
+      }
+    } catch (e) {
+      debugPrint('Snackbar close error: $e');
+    }
+
     Get.snackbar(
       title,
       message,
@@ -27,13 +38,6 @@ class CustomSnackbar {
       icon: Icon(icon, color: effectiveTextColor),
       shouldIconPulse: false,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      mainButton: TextButton(
-        onPressed: () => Get.back(),
-        child: Text(
-          "DISMISS",
-          style: TextStyle(color: effectiveTextColor, fontWeight: FontWeight.bold),
-        ),
-      ),
     );
   }
 

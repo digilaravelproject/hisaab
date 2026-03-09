@@ -1,6 +1,6 @@
-import 'package:hash_code/core/constants/app_constants.dart';
-import 'package:hash_code/core/theme/dark_theme.dart';
-import 'package:hash_code/core/theme/light_theme.dart';
+import 'package:credit_debit/core/constants/app_constants.dart';
+import 'package:credit_debit/core/theme/dark_theme.dart';
+import 'package:credit_debit/core/theme/light_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'core/theme/theme_controller.dart';

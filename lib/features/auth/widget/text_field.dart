@@ -21,44 +21,43 @@ class CurvedTextField extends StatelessWidget {
     this.obscureText = false,
   });
 
-  @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardColor,
-        borderRadius: BorderRadius.circular(32), // more curve
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 25,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLength: maxLength,
-        obscureText: obscureText,
-        style: AppTextTheme.lightTextTheme.bodyLarge!.copyWith(
-          fontWeight: FontWeight.w500,
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLength: maxLength,
+      obscureText: obscureText,
+      style: const TextStyle(fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        prefixIcon: prefixIcon != null
+            ? Icon(
+                prefixIcon,
+                color: AppColors.primaryColor,
+                size: 22,
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: AppTextTheme.lightTextTheme.bodyMedium!
-              .copyWith(color: AppColors.textColorHint),
-          prefixIcon: prefixIcon != null
-              ? Icon(
-            prefixIcon,
-            color: AppColors.primaryColor,
-            size: 24,
-          )
-              : null,
-          border: InputBorder.none,
-          counterText: '',
-          contentPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primaryColor, width: 1.5),
         ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.errorColor),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.errorColor, width: 1.5),
+        ),
+        counterText: '',
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       ),
     );
   }

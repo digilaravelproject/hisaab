@@ -20,10 +20,11 @@ ThemeData lightTheme = ThemeData(
   textTheme: AppTextTheme.lightTextTheme,
   appBarTheme: AppBarTheme(
     elevation: 0,
-    color: AppColors.primaryColor,
-    iconTheme: IconThemeData(color: Colors.white),
+    backgroundColor: Colors.white,
+    foregroundColor: AppColors.primaryColor,
+    iconTheme: IconThemeData(color: AppColors.primaryColor),
     titleTextStyle: TextStyle(
-      color: Colors.white,
+      color: AppColors.primaryColor,
       fontSize: 18,
       fontWeight: FontWeight.w600,
     ),

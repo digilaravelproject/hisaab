@@ -112,10 +112,10 @@ Get-ChildItem -Recurse -Include *.dart -Path lib | ForEach-Object {
 You can change your app's package name using the Flutter tool:
 
 ```bash
-dart run change_app_package_name:main com.example.demo
+dart run change_app_package_name:main com.digiemperor.creditdebit
 ```
 
-Replace `com.example.demo` with your desired package name.
+Replace `com.digiemperor.creditdebit` with your desired package name.
 
 ---
 
@@ -124,13 +124,13 @@ Replace `com.example.demo` with your desired package name.
 To update the display name of your app:
 
 ```bash
-dart run rename_app:main all="Demo App"
+dart run rename_app:main all="credit dabit"
 ```
 
 Also, update your `.env` file:
 
 ```
-APP_NAME=Demo App
+APP_NAME=credit dabit
 ```
 
 ---

@@ -26,19 +26,17 @@ class SplashController extends GetxController {
       final isReady = await _splashService.initialize();
 
       if (isReady) {
-        // Wait for 2 seconds to show splash screen
-        await Future.delayed(const Duration(seconds: 2));
+        // Wait to show splash screen
+        await Future.delayed(const Duration(milliseconds: 2500));
 
         // Check if user is logged in
         final isLoggedIn = SharedPrefs.getBool(AppConstants.isLoggedIn) ?? false;
-        Get.offAllNamed(RouteHelper.getLanguageRoute());
-
-
-        // if (isLoggedIn) {
-        //   Get.offAllNamed(RouteHelper.getHomeRoute());
-        // } else {
-        //   Get.offAllNamed(RouteHelper.getLoginRoute());
-        // }
+        
+        if (isLoggedIn) {
+          Get.offAllNamed(RouteHelper.getHomeRoute());
+        } else {
+          Get.offAllNamed(RouteHelper.getLanguageRoute());
+        }
       } else {
         // Handle maintenance or version issues
         // For now, just navigate to login

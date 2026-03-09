@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:hash_code/features/language/page/language_selection_screen.dart';
+import 'package:credit_debit/features/language/page/language_selection_screen.dart';
 import '../services/network/api_client.dart';
 import '../services/network/network_info.dart';
 import 'package:dio/dio.dart';

@@ -15,108 +15,110 @@ class UserTypeScreen extends StatefulWidget {
 }
 
 class _UserTypeScreenState extends State<UserTypeScreen> {
-  String? selectedRole;
+  List<String> selectedRoles = [];
 
   final List<Map<String, dynamic>> userRoles = [
     {
       'title': 'Employee',
-      'icon': Icons.person_outline_rounded,
-      'color': Color(0xFFE3F2FD),
-      'iconColor': Color(0xFF1976D2),
+      'image': 'assets/images/role_employee.png',
     },
     {
       'title': 'Farmer',
-      'icon': Icons.agriculture_rounded,
-      'color': Color(0xFFE8F5E9),
-      'iconColor': Color(0xFF388E3C),
+      'image': 'assets/images/role_farmer.png',
     },
     {
       'title': 'Proprietor',
-      'icon': Icons.business_center_rounded,
-      'color': Color(0xFFFFF3E0),
-      'iconColor': Color(0xFFF57C00),
+      'image': 'assets/images/role_proprietor.png',
     },
     {
-      'title': 'Business',
-      'icon': Icons.store_rounded,
-      'color': Color(0xFFF3E5F5),
-      'iconColor': Color(0xFF7B1FA2),
+      'title': 'Business Owner',
+      'image': 'assets/images/role_business.png',
     },
     {
       'title': 'Shopkeeper',
-      'icon': Icons.shop_rounded,
-      'color': Color(0xFFFFEBEE),
-      'iconColor': Color(0xFFC62828),
+      'image': 'assets/images/role_shopkeeper.png',
     },
     {
       'title': 'Transporter',
-      'icon': Icons.local_shipping_rounded,
-      'color': Color(0xFFE0F2F1),
-      'iconColor': Color(0xFF00796B),
+      'image': 'assets/images/role_transporter.png',
     },
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 16,
-              color: AppColors.primaryColor,
-            ),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Choose Role',
-          style: AppTextTheme.lightTextTheme.displaySmall,
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Tell us about yourself',
-              style: AppTextTheme.lightTextTheme.displayMedium?.copyWith(
-                fontSize: 24,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Back Button
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 18,
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Select your profession to get started',
-              style: AppTextTheme.lightTextTheme.bodyMedium,
-            ),
-            const SizedBox(height: 30),
+              const SizedBox(height: 20),
+              Text(
+                'Choose Role',
+                style: AppTextTheme.lightTextTheme.displayMedium?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Select your profession to get started',
+                style: AppTextTheme.lightTextTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade600,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 20),
             // Grid of user types
             Expanded(
               child: GridView.builder(
                 itemCount: userRoles.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 1.1,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.2,
                 ),
                 itemBuilder: (context, index) {
                   final role = userRoles[index];
-                  final isSelected = selectedRole == role['title'];
+                  final isSelected = selectedRoles.contains(role['title']);
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        selectedRole = role['title'];
+                        if (selectedRoles.contains(role['title'])) {
+                          selectedRoles.remove(role['title']);
+                        } else {
+                          selectedRoles.add(role['title']);
+                        }
                       });
                     },
                     child: AnimatedContainer(
@@ -141,24 +143,16 @@ class _UserTypeScreenState extends State<UserTypeScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: role['color'],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              role['icon'],
-                              color: role['iconColor'],
-                              size: 30,
-                            ),
+                          Image.asset(
+                            role['image'],
+                            width: 50,
+                            height: 50,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Text(
                             role['title'],
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textColorPrimary,
                             ),
@@ -175,14 +169,14 @@ class _UserTypeScreenState extends State<UserTypeScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: selectedRole != null
+                onPressed: selectedRoles.isNotEmpty
                     ? () {
-                  Get.toNamed(RouteHelper.getProfileSetupRoute());
+                  Get.toNamed(RouteHelper.getBankIntroRoute());
 
-                  // Handle navigation with selectedRole
+                  // Handle navigation with selectedRoles
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('$selectedRole selected!'),
+                      content: Text('${selectedRoles.join(", ")} selected!'),
                       backgroundColor: AppColors.successColor,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -202,7 +196,7 @@ class _UserTypeScreenState extends State<UserTypeScreen> {
                   disabledBackgroundColor: AppColors.primaryColor.withOpacity(0.4),
                 ),
                 child: Text(
-                  'Next',
+                  'Continue',
                   style: AppTextTheme.lightTextTheme.displayMedium?.copyWith(
                     color: Colors.white,
                     fontSize: 18,
@@ -213,6 +207,7 @@ class _UserTypeScreenState extends State<UserTypeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

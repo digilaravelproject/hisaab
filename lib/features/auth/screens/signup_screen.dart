@@ -1,4 +1,4 @@
-import 'package:hash_code/routes/route_helper.dart';
+import 'package:credit_debit/routes/route_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/dimensions.dart';

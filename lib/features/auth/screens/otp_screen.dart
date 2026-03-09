@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:hash_code/features/auth/screens/user_selection_type_screen.dart';
+import 'package:credit_debit/features/auth/screens/user_selection_type_screen.dart';
 import '../../../core/constants/dimensions.dart';
 import '../../../core/constants/image_constants.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:credit_debit/core/theme/app_colors.dart';
 import '../../../core/theme/text_theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_image_widget.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../routes/route_helper.dart';
 import '../controllers/auth_controller.dart';
+import 'dart:math' as math;
+import '../../../core/widgets/hexagon_painter.dart';
 
 class OtpScreen extends StatelessWidget {
   const OtpScreen({Key? key}) : super(key: key);
@@ -211,7 +213,7 @@ class OtpScreen extends StatelessWidget {
 }
 
 
-class OtpScreen1 extends StatelessWidget {
+class OtpScreen1 extends StatefulWidget {
   final String mobileNumber;
 
   const OtpScreen1({
@@ -220,18 +222,81 @@ class OtpScreen1 extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<OtpScreen1> createState() => _OtpScreen1State();
+}
+
+class _OtpScreen1State extends State<OtpScreen1> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      backgroundColor: Colors.white,
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            // Subtle decorative shapes
+            Positioned(
+              top: -100,
+              left: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryColor.withOpacity(0.05),
+                ),
+              ),
+            ),
+            
+            // Rotating Background Icon
+            Positioned(
+              bottom: -50,
+              right: -80,
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (_, child) {
+                  return Transform.rotate(
+                    angle: _animationController.value * 2 * math.pi,
+                    child: child,
+                  );
+                },
+                child: SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: CustomPaint(
+                    painter: HexagonPainter(
+                      color: AppColors.primaryColor.withOpacity(0.03),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // Back Button
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () => Get.back(),
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -239,9 +304,9 @@ class OtpScreen1 extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withOpacity(0.04),
                         blurRadius: 10,
-                        offset: const Offset(0, 2),
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -253,7 +318,7 @@ class OtpScreen1 extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 60),
 
               // Title
               Text(
@@ -261,6 +326,7 @@ class OtpScreen1 extends StatelessWidget {
                 style: AppTextTheme.lightTextTheme.displayMedium?.copyWith(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor,
                 ),
               ),
 
@@ -269,10 +335,13 @@ class OtpScreen1 extends StatelessWidget {
               RichText(
                 text: TextSpan(
                   text: 'Code sent to ',
-                  style: AppTextTheme.lightTextTheme.bodyMedium,
+                  style: AppTextTheme.lightTextTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                    fontSize: 16,
+                  ),
                   children: [
                     TextSpan(
-                      text: '+91 $mobileNumber',
+                      text: '+91 ${widget.mobileNumber}',
                       style: const TextStyle(
                         color: AppColors.primaryColor,
                         fontWeight: FontWeight.w600,
@@ -316,18 +385,18 @@ class OtpScreen1 extends StatelessWidget {
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                           borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                           borderSide: BorderSide(
-                            color: AppColors.borderColor,
-                            width: 1,
+                            color: Colors.grey.shade200,
+                            width: 1.5,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
                             color: AppColors.primaryColor,
                             width: 2,
@@ -383,7 +452,7 @@ class OtpScreen1 extends StatelessWidget {
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 40),
 
               // Verify Button
               SizedBox(
@@ -412,15 +481,13 @@ class OtpScreen1 extends StatelessWidget {
           ),
         ),
       ),
+      ],
+      ),
+      ),
     );
   }
 
   void _verifyOtp(BuildContext context) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const UserTypeScreen(),
-      ),
-    );
+    Get.toNamed(RouteHelper.getProfileSetupRoute());
   }
 }
