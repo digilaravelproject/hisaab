@@ -31,9 +31,20 @@ class SplashController extends GetxController {
 
         // Check if user is logged in
         final isLoggedIn = SharedPrefs.getBool(AppConstants.isLoggedIn) ?? false;
-        
+        final savedUserStatus = SharedPrefs.getInt(AppConstants.userStatus) ?? 0;
+
         if (isLoggedIn) {
-          Get.offAllNamed(RouteHelper.getHomeRoute());
+          // user_status: 1 → profile setup, 2 → choose role, 3+ → dashboard
+          switch (savedUserStatus) {
+            case 1:
+              Get.offAllNamed(RouteHelper.getProfileSetupRoute());
+              break;
+            case 2:
+              Get.offAllNamed(RouteHelper.getChooseRoleRoute());
+              break;
+            default:
+              Get.offAllNamed(RouteHelper.getDashboardRoute());
+          }
         } else {
           Get.offAllNamed(RouteHelper.getLanguageRoute());
         }

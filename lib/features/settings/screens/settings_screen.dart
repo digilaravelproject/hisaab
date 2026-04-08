@@ -1,4 +1,5 @@
 import 'package:credit_debit/core/models/language_model.dart';
+import 'package:credit_debit/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -74,7 +75,7 @@ class SettingsScreen extends GetView<SettingsController> {
       child: Column(
         children: [
           InkWell(
-            onTap: () => Get.to(() => const EditProfileScreen()),
+            onTap: () => Get.toNamed(AppRoutes.editProfile),
             child: Row(
               children: [
                 Container(
@@ -85,10 +86,12 @@ class SettingsScreen extends GetView<SettingsController> {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Text(
-                      controller.userName.value.substring(0, 1),
+                    child: Obx(() => Text(
+                      controller.userName.value.isNotEmpty
+                          ? controller.userName.value[0].toUpperCase()
+                          : '?',
                       style: TextStyle(color: AppColors.primaryColor, fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
+                    )),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -115,7 +118,7 @@ class SettingsScreen extends GetView<SettingsController> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Get.to(() => const EditProfileScreen()),
+                  onPressed: () => Get.toNamed(AppRoutes.editProfile),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -286,7 +289,7 @@ class SettingsScreen extends GetView<SettingsController> {
                 icon: Icons.notifications_none_rounded,
                 title: 'Notifications',
                 value: controller.isNotificationsEnabled.value,
-                onChanged: (val) => controller.isNotificationsEnabled.value = val,
+                onChanged: (val) => controller.toggleNotifications(val),
               )),
             ],
           ),
@@ -309,7 +312,7 @@ class SettingsScreen extends GetView<SettingsController> {
           icon: Icons.fingerprint_rounded, 
           title: 'Enable Biometric', 
           value: controller.isBiometricEnabled.value,
-          onChanged: (val) => controller.isBiometricEnabled.value = val,
+          onChanged: (val) => controller.toggleBiometric(val),
         )),
       ],
     );

@@ -321,8 +321,8 @@ class ApiChecker {
       }
     }
 
-    if (response.data is Map && (response.data['res']?.toString().toLowerCase() != 'success')) {
-      final message = response.data['msg']?.toString() ?? 'Something went wrong';
+    if (response.data is Map && (response.data['res']?.toString().toLowerCase() != 'success') && (response.data['status'] != true)) {
+      final message = response.data['msg']?.toString() ?? response.data['message']?.toString() ?? 'Something went wrong';
       if (showToaster) CustomSnackbar.showError(message);
 
       return ResponseModel(

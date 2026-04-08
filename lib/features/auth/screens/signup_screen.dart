@@ -72,7 +72,7 @@ class SignupScreen extends StatelessWidget {
 
                     // Form
                     Form(
-                      key: authController.formKey,
+                    //  key: authController.formKey,
                       child: Column(
                         children: [
                           // Name field
@@ -86,7 +86,7 @@ class SignupScreen extends StatelessWidget {
                               prefixIcon: Icon(Icons.phone_android, color: colorScheme.primary),
                             ),
 
-                            validator: authController.validateName,
+                           // validator: authController.validateName,
                           ),
 
                           SizedBox(height: Dimensions.height20),
@@ -100,7 +100,7 @@ class SignupScreen extends StatelessWidget {
                               hintText: 'Mobile Number',
                               prefixIcon: Icon(Icons.phone_android, color: colorScheme.primary),
                             ),
-                            validator: authController.validateMobile,
+                           // validator: authController.validateMobile,
                             maxLength: 10,
                           ),
 

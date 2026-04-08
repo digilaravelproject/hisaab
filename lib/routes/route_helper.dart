@@ -1,8 +1,11 @@
 import 'package:get/get.dart';
+import '../core/services/network/api_client.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/profile_setup_screen.dart';
 import '../features/bank/screens/bank_account_linking_screen.dart';
+import '../features/settings/domain/repositories/settings_repository.dart';
+import '../features/settings/domain/services/settings_service.dart';
 import '../features/bank/screens/connect_bank_intro_screen.dart';
 import '../features/auth/screens/otp_screen.dart';
 import '../features/language/page/language_selection_screen.dart';
@@ -27,6 +30,7 @@ import '../features/settings/screens/faq_screen.dart';
 import '../features/settings/screens/contact_us_screen.dart';
 import '../features/settings/screens/terms_screen.dart';
 import '../features/settings/screens/data_backup_screen.dart';
+import '../features/profile/bindings/profile_binding.dart';
 import 'app_routes.dart';
 
 class RouteHelper {
@@ -69,12 +73,18 @@ class RouteHelper {
     ),
     GetPage(
       name: AppRoutes.otp,
-      page: () => const OtpScreen(),
+      page: () => OtpScreen1(
+        mobileNumber: Get.arguments?['mobile'] ?? '',
+      ),
       transition: Transition.rightToLeft,
     ),
     GetPage(
       name: AppRoutes.home,
       page: () => const HomeScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => TransactionController(), fenix: true);
+        Get.lazyPut(() => DashboardController(), fenix: true);
+      }),
       transition: Transition.fadeIn,
     ),
     GetPage(
@@ -115,7 +125,9 @@ class RouteHelper {
         Get.lazyPut(() => TransactionController());
         Get.lazyPut(() => BusinessController());
         Get.lazyPut(() => ReportsController());
-        Get.lazyPut(() => SettingsController());
+        Get.lazyPut(() => SettingsRepository(Get.find<ApiClient>()));
+        Get.lazyPut(() => SettingsService(Get.find<SettingsRepository>()));
+        Get.lazyPut(() => SettingsController(Get.find<SettingsService>()));
         Get.lazyPut(() => HomeController(), fenix: true);
         Get.lazyPut(() => BudgetController(), fenix: true);
       }),
@@ -139,6 +151,7 @@ class RouteHelper {
     GetPage(
       name: AppRoutes.editProfile,
       page: () => const EditProfileScreen(),
+      binding: ProfileBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(

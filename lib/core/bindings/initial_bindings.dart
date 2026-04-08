@@ -29,21 +29,27 @@ class InitialBindings extends Bindings {
     // Auth
     Get.lazyPut(() => AuthRepository(Get.find<ApiClient>()), fenix: true);
     Get.lazyPut(() => AuthService(Get.find<AuthRepository>()), fenix: true);
+    Get.lazyPut(() => SendOtpUseCase(Get.find<AuthService>()), fenix: true);
     Get.lazyPut(() => LoginUseCase(Get.find<AuthService>()), fenix: true);
     Get.lazyPut(() => RegisterUseCase(Get.find<AuthService>()), fenix: true);
     Get.lazyPut(() => VerifyOtpUseCase(Get.find<AuthService>()), fenix: true);
     Get.lazyPut(() => LogoutUseCase(Get.find<AuthService>()), fenix: true);
     Get.lazyPut(() => CheckLoginStatusUseCase(Get.find<AuthService>()), fenix: true);
     Get.lazyPut(() => GetUserInfoUseCase(Get.find<AuthService>()), fenix: true);
+    Get.lazyPut(() => UpdateUserTypesUseCase(Get.find<AuthService>()), fenix: true);
+    Get.lazyPut(() => UpdateProfileUseCase(Get.find<AuthService>()), fenix: true);
 
     Get.lazyPut(
           () => AuthController(
+        sendOtpUseCase: Get.find<SendOtpUseCase>(),
         loginUseCase: Get.find<LoginUseCase>(),
         registerUseCase: Get.find<RegisterUseCase>(),
         verifyOtpUseCase: Get.find<VerifyOtpUseCase>(),
         logoutUseCase: Get.find<LogoutUseCase>(),
         checkLoginStatusUseCase: Get.find<CheckLoginStatusUseCase>(),
         getUserInfoUseCase: Get.find<GetUserInfoUseCase>(),
+        updateUserTypesUseCase: Get.find<UpdateUserTypesUseCase>(),
+        updateProfileUseCase: Get.find<UpdateProfileUseCase>(),
       ),
       fenix: true,
     );

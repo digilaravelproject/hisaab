@@ -1,6 +1,7 @@
 import 'package:credit_debit/core/constants/app_constants.dart';
 import 'package:credit_debit/core/theme/dark_theme.dart';
 import 'package:credit_debit/core/theme/light_theme.dart';
+import 'package:credit_debit/core/utils/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'core/theme/theme_controller.dart';
@@ -25,6 +26,8 @@ class MyApp extends StatelessWidget {
     return Obx(() => GetMaterialApp(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: CustomSnackbar.messengerKey,
+
       navigatorKey: Get.key,
       initialBinding: InitialBindings(),
       theme: lightTheme,

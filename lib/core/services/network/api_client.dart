@@ -3,6 +3,7 @@ import 'package:dio/dio.dart' hide FormData, MultipartFile;
 import 'package:dio/dio.dart' as dio;
 import 'package:file_picker/file_picker.dart';
 import 'package:credit_debit/core/constants/app_constants.dart';
+import 'package:credit_debit/core/services/config/env_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart';
@@ -34,6 +35,12 @@ class ApiClient {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         String token = await TokenManager.getToken() ?? "";
+
+        // send-otp endpoint uses static API token, not user token
+        if (options.path.contains('/auth/send-otp') && token.isEmpty) {
+          token = EnvConfig.apiToken;
+        }
+
         options.headers["Authorization"] = "Bearer $token";
         options.headers["Content-Type"] = "application/json";
 

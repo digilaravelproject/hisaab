@@ -22,24 +22,86 @@ class AuthService implements AuthServiceInterface {
   }
 
   @override
+  Future<ResponseModel> sendOtp(String mobile) async {
+    return await _authRepository.sendOtp(mobile);
+  }
+
+  @override
+  Future<ResponseModel> updateUserTypes(List<String> userTypes) async {
+    final response = await _authRepository.updateUserTypes(userTypes);
+    if (response.isSuccess && response.body != null) {
+      try {
+        final body = response.body as Map<String, dynamic>;
+        final userData = body['user'] ?? body;
+        final user = UserModel.fromJson(userData as Map<String, dynamic>);
+        await saveUserInfo(user);
+      } catch (e) {
+        print('Error saving user types: $e');
+      }
+    }
+    // After selecting user types, profile is complete → userStatus = 3
+    if (response.isSuccess) {
+      await SharedPrefs.setInt(AppConstants.userStatus, 3);
+    }
+    return response;
+  }
+
+  @override
+  Future<ResponseModel> updateProfile({
+    required String name,
+    required String gender,
+    required String reminderTime,
+  }) async {
+    final response = await _authRepository.updateProfile(
+      name: name,
+      gender: gender,
+      reminderTime: reminderTime,
+    );
+    // Auto-save updated user to SharedPrefs
+    if (response.isSuccess && response.body != null) {
+      try {
+        final body = response.body as Map<String, dynamic>;
+        final userData = body['user'] ?? body;
+        final user = UserModel.fromJson(userData as Map<String, dynamic>);
+        await saveUserInfo(user);
+        // Profile setup done → userStatus = 2 (next: choose role)
+        await SharedPrefs.setInt(AppConstants.userStatus, 2);
+      } catch (e) {
+        print('Error saving profile data: $e');
+      }
+    }
+    return response;
+  }
+
+  @override
   Future<ResponseModel> verifyOtp(String mobile, String otp) async {
     final response = await _authRepository.verifyOtp(mobile, otp);
 
-    // Auto-save token and user if success
+    // API response: { status: true, data: { token, user_status, user } }
     if (response.isSuccess && response.body != null) {
       try {
         final body = response.body as Map<String, dynamic>;
 
         // Save token
-        final token = body['token'] ?? body['access_token'];
+        final token = body['token'];
         if (token != null && token.toString().isNotEmpty) {
           await saveUserToken(token.toString());
         }
 
-        // Save user
-        final userData = body['data'] ?? body['user'] ?? body;
-        final user = UserModel.fromJson(userData);
-        await saveUserInfo(user);
+        // Save user_status (1 = profile incomplete, 2 = complete)
+        final userStatusVal = body['user_status'];
+        if (userStatusVal != null) {
+          await SharedPrefs.setInt(
+              AppConstants.userStatus, int.parse(userStatusVal.toString()));
+        }
+
+        // Save user data
+        final userData = body['user'];
+        if (userData != null) {
+          final user = UserModel.fromJson(userData as Map<String, dynamic>);
+          await saveUserInfo(user);
+        }
+
         await SharedPrefs.setBool(AppConstants.isLoggedIn, true);
       } catch (e) {
         print('Error saving user data: $e');
@@ -62,8 +124,17 @@ class AuthService implements AuthServiceInterface {
   @override
   Future<void> clearUserInfo() async {
     await SharedPrefs.remove(AppConstants.userData);
+    await SharedPrefs.remove(AppConstants.userStatus);
     await TokenManager.clearToken();
     await SharedPrefs.setBool(AppConstants.isLoggedIn, false);
+  }
+
+  @override
+  Future<ResponseModel> logoutFromServer() async {
+    // Call API first, then clear local data regardless of response
+    final response = await _authRepository.logoutFromServer();
+    await clearUserInfo();
+    return response;
   }
 
   @override
