@@ -65,6 +65,8 @@ class TransactionController extends GetxController {
     applyFilters();
   }
 
+
+
   void initTempFilters() {
     tempType.value = selectedType.value;
     tempSort.value = selectedSort.value;

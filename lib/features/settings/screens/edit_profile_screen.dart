@@ -1,8 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_validators.dart';
-import '../../../core/utils/custom_snackbar.dart';
 import '../../profile/controllers/profile_controller.dart';
 
 class EditProfileScreen extends GetView<ProfileController> {
@@ -41,6 +42,7 @@ class EditProfileScreen extends GetView<ProfileController> {
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Profile photo
               Center(
@@ -49,12 +51,15 @@ class EditProfileScreen extends GetView<ProfileController> {
                   children: [
                     CircleAvatar(
                       radius: 56,
-                      backgroundColor: AppColors.primaryColor,
-                      backgroundImage: controller.userProfile.value?.profilePhoto != null
-                          ? NetworkImage(controller.userProfile.value!.profilePhoto!)
-                          : null,
-                      child: controller.userProfile.value?.profilePhoto == null
-                          ? const Icon(Icons.person, size: 64, color: Colors.white)
+                      backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+                      backgroundImage: controller.selectedImage.value != null
+                          ? FileImage(File(controller.selectedImage.value!.path)) as ImageProvider
+                          : (controller.userProfile.value?.profilePhoto != null
+                              ? NetworkImage(controller.userProfile.value!.profilePhoto!)
+                              : null),
+                      child: controller.selectedImage.value == null &&
+                              controller.userProfile.value?.profilePhoto == null
+                          ? const Icon(Icons.person, size: 64, color: AppColors.primaryColor)
                           : null,
                     ),
                     InkWell(
@@ -80,44 +85,68 @@ class EditProfileScreen extends GetView<ProfileController> {
               const SizedBox(height: 32),
 
               // Full Name
+              Text(
+                'Full Name',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: controller.nameController,
-                decoration: _inputDecoration('Full Name'),
+                decoration: _inputDecoration('Enter your name'),
                 validator: (v) => AppValidators.name(v),
               ),
 
               const SizedBox(height: 16),
 
-              // Email (read-only for now, API doesn't provide)
+              // Email
+              Text(
+                'Email Address',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: controller.emailController,
-                decoration: _inputDecoration('Email Address'),
-                readOnly: true,
-                enabled: false,
+                decoration: _inputDecoration('Enter your email'),
+                keyboardType: TextInputType.emailAddress,
               ),
 
               const SizedBox(height: 16),
 
               // Phone Number (read-only)
+              Text(
+                'Phone Number',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: controller.phoneController,
-                decoration: _inputDecoration('Phone Number'),
+                decoration: _inputDecoration('Phone Number').copyWith(
+                  fillColor: Colors.grey.shade50,
+                  filled: true,
+                ),
                 readOnly: true,
                 enabled: false,
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
 
               // Save button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Get.back();
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      CustomSnackbar.showSuccess('Profile updated successfully');
-                    });
-                  },
+                  onPressed: controller.isLoading.value ? null : () => controller.updateProfile(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 18),
@@ -125,13 +154,24 @@ class EditProfileScreen extends GetView<ProfileController> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     elevation: 0,
+                    disabledBackgroundColor: AppColors.primaryColor.withOpacity(0.6),
                   ),
-                  child: const Text(
-                    'Save Changes',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                  child: controller.isLoading.value
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
           ),
         );
@@ -139,10 +179,10 @@ class EditProfileScreen extends GetView<ProfileController> {
     );
   }
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -172,6 +212,15 @@ class EditProfileScreen extends GetView<ProfileController> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
             const Text(
               'Change Profile Photo',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -192,7 +241,7 @@ class EditProfileScreen extends GetView<ProfileController> {
               ),
               onTap: () {
                 Get.back();
-                CustomSnackbar.showInfo('Camera feature coming soon');
+                controller.pickImage(ImageSource.camera);
               },
             ),
             const SizedBox(height: 12),
@@ -214,7 +263,7 @@ class EditProfileScreen extends GetView<ProfileController> {
               ),
               onTap: () {
                 Get.back();
-                CustomSnackbar.showInfo('Gallery feature coming soon');
+                controller.pickImage(ImageSource.gallery);
               },
             ),
             const SizedBox(height: 20),

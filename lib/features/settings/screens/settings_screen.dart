@@ -352,8 +352,13 @@ class SettingsScreen extends GetView<SettingsController> {
         ),
         _buildControlTile(
           icon: Icons.description_outlined, 
-          title: 'Terms & Privacy', 
+          title: 'Terms & Conditions',
           onTap: () => Get.toNamed(RouteHelper.getTermsRoute()),
+        ),
+        _buildControlTile(
+          icon: Icons.description_outlined,
+          title: 'Privacy Policy',
+          onTap: () => Get.toNamed(RouteHelper.getPrivacyPolicyRoute()),
         ),
         _buildControlTile(
           icon: Icons.info_outline_rounded, 

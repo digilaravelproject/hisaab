@@ -40,12 +40,31 @@ class UserSettings {
         'weekly_budget_limit': weeklyBudgetLimit,
         'monthly_budget_limit': monthlyBudgetLimit,
       };
+
+  UserSettings copyWith({
+    bool? notificationsEnabled,
+    bool? biometricEnabled,
+    bool? pinSet,
+    String? dailyReminderTime,
+    double? weeklyBudgetLimit,
+    double? monthlyBudgetLimit,
+  }) {
+    return UserSettings(
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+      pinSet: pinSet ?? this.pinSet,
+      dailyReminderTime: dailyReminderTime ?? this.dailyReminderTime,
+      weeklyBudgetLimit: weeklyBudgetLimit ?? this.weeklyBudgetLimit,
+      monthlyBudgetLimit: monthlyBudgetLimit ?? this.monthlyBudgetLimit,
+    );
+  }
 }
 
 class UserModel {
   final int id;
   final String name;
   final String mobile;
+  final String? email;
   final String? gender;
   final List<dynamic> userTypes;
   final String? reminderTime;
@@ -57,6 +76,7 @@ class UserModel {
     required this.id,
     required this.name,
     required this.mobile,
+    this.email,
     this.gender,
     this.userTypes = const [],
     this.reminderTime,
@@ -70,6 +90,7 @@ class UserModel {
       id: json['id'] != null ? int.parse(json['id'].toString()) : 0,
       name: json['name'] ?? '',
       mobile: json['mobile'] ?? '',
+      email: json['email'],
       gender: json['gender'],
       userTypes: json['user_types'] ?? [],
       reminderTime: json['reminder_time'],
@@ -85,6 +106,7 @@ class UserModel {
         'id': id,
         'name': name,
         'mobile': mobile,
+        'email': email,
         'gender': gender,
         'user_types': userTypes,
         'reminder_time': reminderTime,
@@ -98,5 +120,31 @@ class UserModel {
   static UserModel? fromJsonString(String? jsonString) {
     if (jsonString == null || jsonString.isEmpty) return null;
     return UserModel.fromJson(jsonDecode(jsonString));
+  }
+
+  UserModel copyWith({
+    int? id,
+    String? name,
+    String? mobile,
+    String? email,
+    String? gender,
+    List<dynamic>? userTypes,
+    String? reminderTime,
+    String? profilePhoto,
+    bool? profileComplete,
+    UserSettings? settings,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      mobile: mobile ?? this.mobile,
+      email: email ?? this.email,
+      gender: gender ?? this.gender,
+      userTypes: userTypes ?? this.userTypes,
+      reminderTime: reminderTime ?? this.reminderTime,
+      profilePhoto: profilePhoto ?? this.profilePhoto,
+      profileComplete: profileComplete ?? this.profileComplete,
+      settings: settings ?? this.settings,
+    );
   }
 }

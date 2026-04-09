@@ -25,8 +25,15 @@ class AppConstants {
     static const String getSettingsUrl = '/api/v1/settings';
     static const String updateNotificationsUrl = '/api/v1/settings/notifications';
     static const String updateBiometricUrl = '/api/v1/settings/biometric';
+    static const String updateReminderUrl = '/api/v1/settings/daily-reminder';
+    static const String updateWeeklyBudgetUrl = '/api/v1/settings/weekly-budget-limit';
+    static const String updateMonthlyBudgetUrl = '/api/v1/settings/monthly-budget-limit';
     static const String setPinUrl = '/api/v1/settings/pin';
     static const String logoutUrl = '/api/v1/auth/logout';
+    static const String privacyPolicyUrl = '/api/v1/static/privacy-policy';
+    static const String termsUrl = '/api/v1/static/terms';
+    static const String contactUsUrl = '/api/v1/contact-us';
+    static const String clearCacheUrl = '/api/v1/cache/clear-all';
 
     // Shared Preferences keys
     static const String theme = 'theme';

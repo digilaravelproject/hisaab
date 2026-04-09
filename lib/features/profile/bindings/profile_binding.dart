@@ -10,8 +10,10 @@ class ProfileBinding extends Bindings {
     Get.lazyPut(() => ProfileRepository(Get.find<ApiClient>()));
     Get.lazyPut(() => ProfileService(Get.find<ProfileRepository>()));
     Get.lazyPut(() => GetProfileUseCase(Get.find<ProfileService>()));
+    Get.lazyPut(() => UpdateProfileDataUseCase(Get.find<ProfileService>()));
     Get.lazyPut(() => ProfileController(
           getProfileUseCase: Get.find<GetProfileUseCase>(),
+          updateProfileUseCase: Get.find<UpdateProfileDataUseCase>(),
         ));
   }
 }

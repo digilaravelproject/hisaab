@@ -14,11 +14,27 @@ class SettingsService {
     return await _repository.updateNotifications(enabled);
   }
 
+  Future<ResponseModel> updateReminderTime(String time) async {
+    return await _repository.updateReminderTime(time);
+  }
+
+  Future<ResponseModel> updateWeeklyBudget(double amount) async {
+    return await _repository.updateWeeklyBudget(amount);
+  }
+
+  Future<ResponseModel> updateMonthlyBudget(double amount) async {
+    return await _repository.updateMonthlyBudget(amount);
+  }
+
   Future<ResponseModel> updateBiometric(bool enabled) async {
     return await _repository.updateBiometric(enabled);
   }
 
   Future<ResponseModel> setPin(String pin) async {
     return await _repository.setPin(pin);
+  }
+
+  Future<ResponseModel> clearCache() async {
+    return await _repository.clearCache();
   }
 }

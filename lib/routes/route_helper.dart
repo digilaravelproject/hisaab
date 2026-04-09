@@ -1,3 +1,4 @@
+import 'package:credit_debit/features/settings/screens/privacy_policy.dart';
 import 'package:get/get.dart';
 import '../core/services/network/api_client.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -6,6 +7,8 @@ import '../features/auth/screens/profile_setup_screen.dart';
 import '../features/bank/screens/bank_account_linking_screen.dart';
 import '../features/settings/domain/repositories/settings_repository.dart';
 import '../features/settings/domain/services/settings_service.dart';
+import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/profile/domain/services/profile_service.dart';
 import '../features/bank/screens/connect_bank_intro_screen.dart';
 import '../features/auth/screens/otp_screen.dart';
 import '../features/language/page/language_selection_screen.dart';
@@ -31,6 +34,7 @@ import '../features/settings/screens/contact_us_screen.dart';
 import '../features/settings/screens/terms_screen.dart';
 import '../features/settings/screens/data_backup_screen.dart';
 import '../features/profile/bindings/profile_binding.dart';
+import '../features/help_support/bindings/help_support_binding.dart';
 import 'app_routes.dart';
 
 class RouteHelper {
@@ -55,6 +59,7 @@ class RouteHelper {
   static String getContactUsRoute() => AppRoutes.contactUs;
   static String getTermsRoute() => AppRoutes.terms;
   static String getDataBackupRoute() => AppRoutes.dataBackup;
+  static String getPrivacyPolicyRoute() => AppRoutes.privacyPolicy;
 
   static final List<GetPage> routes = [
     GetPage(
@@ -127,7 +132,9 @@ class RouteHelper {
         Get.lazyPut(() => ReportsController());
         Get.lazyPut(() => SettingsRepository(Get.find<ApiClient>()));
         Get.lazyPut(() => SettingsService(Get.find<SettingsRepository>()));
-        Get.lazyPut(() => SettingsController(Get.find<SettingsService>()));
+        Get.lazyPut(() => ProfileRepository(Get.find<ApiClient>()));
+        Get.lazyPut(() => ProfileService(Get.find<ProfileRepository>()));
+        Get.lazyPut(() => SettingsController(Get.find<SettingsService>(), Get.find<ProfileService>()));
         Get.lazyPut(() => HomeController(), fenix: true);
         Get.lazyPut(() => BudgetController(), fenix: true);
       }),
@@ -167,11 +174,19 @@ class RouteHelper {
     GetPage(
       name: AppRoutes.contactUs,
       page: () => const ContactUsScreen(),
+      binding: HelpSupportBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: AppRoutes.privacyPolicy,
+      page: () => const PrivacyPolicyScreen(),
+      binding: HelpSupportBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(
       name: AppRoutes.terms,
       page: () => const TermsScreen(),
+      binding: HelpSupportBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(

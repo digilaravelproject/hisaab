@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/custom_snackbar.dart';
+import '../../help_support/controllers/help_support_controller.dart';
 
-class ContactUsScreen extends StatelessWidget {
+class ContactUsScreen extends GetView<HelpAndSupportController> {
   const ContactUsScreen({Key? key}) : super(key: key);
 
   @override
@@ -11,15 +11,20 @@ class ContactUsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Contact Us', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.slate800)),
+        title: const Text('Contact Us',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate800)),
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slate800, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: AppColors.slate800, size: 20),
           onPressed: () {
             FocusScope.of(context).unfocus();
-            Navigator.of(context).pop();
+            Get.back();
           },
         ),
       ),
@@ -30,7 +35,10 @@ class ContactUsScreen extends StatelessWidget {
           children: [
             const Text(
               'How can we help?',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.slate800),
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.slate800),
             ),
             const SizedBox(height: 8),
             Text(
@@ -38,40 +46,75 @@ class ContactUsScreen extends StatelessWidget {
               style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 32),
-            _buildTextField(label: 'Subject', hint: 'What is this about?'),
+            _buildTextField(
+                label: 'Subject',
+                hint: 'What is this about?',
+                controller: controller.subjectController),
             const SizedBox(height: 16),
-            _buildTextField(label: 'Message', hint: 'Describe your issue or feedback...', maxLines: 5),
+            _buildTextField(
+                label: 'Message',
+                hint: 'Describe your issue or feedback...',
+                maxLines: 5,
+                controller: controller.messageController),
             const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  CustomSnackbar.showSuccess('Message sent successfully', title: 'Support');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
-                child: const Text('Send Message', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
+              child: Obx(() => ElevatedButton(
+                    onPressed: controller.isLoading.value
+                        ? null
+                        : () => controller.submitContactUs(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                      disabledBackgroundColor: AppColors.primaryColor.withOpacity(0.6),
+                    ),
+                    child: controller.isLoading.value
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Send Message',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                  )),
             ),
+            const SizedBox(height: 24),
+            Obx(() => Center(
+              child: Text(
+                'Sending as: ${controller.name.value} (${controller.email.value})',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+              ),
+            )),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTextField({required String label, required String hint, int maxLines = 1}) {
+  Widget _buildTextField(
+      {required String label,
+      required String hint,
+      int maxLines = 1,
+      required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate800)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate800)),
         const SizedBox(height: 8),
         TextFormField(
+          controller: controller,
           maxLines: maxLines,
           decoration: InputDecoration(
             hintText: hint,
@@ -90,7 +133,8 @@ class ContactUsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.primaryColor),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
         ),
       ],

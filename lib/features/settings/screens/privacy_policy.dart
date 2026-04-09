@@ -5,18 +5,18 @@ import 'package:get/get.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import '../../help_support/controllers/help_support_controller.dart';
 
-class TermsScreen extends GetView<HelpAndSupportController> {
-  const TermsScreen({Key? key}) : super(key: key);
+class PrivacyPolicyScreen extends GetView<HelpAndSupportController> {
+  const PrivacyPolicyScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Fetch terms and conditions
-    controller.fetchPage(AppConstants.termsUrl);
+    // Fetch privacy policy if not already fetched or every time we enter
+    controller.fetchPage(AppConstants.privacyPolicyUrl);
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Terms & Conditions',
+        title: const Text('Privacy Policy',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -47,7 +47,7 @@ class TermsScreen extends GetView<HelpAndSupportController> {
                 const Text('No content available', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => controller.fetchPage(AppConstants.termsUrl),
+                  onPressed: () => controller.fetchPage(AppConstants.privacyPolicyUrl),
                   child: const Text('Retry'),
                 ),
               ],

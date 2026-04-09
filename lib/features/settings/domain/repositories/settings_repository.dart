@@ -22,6 +22,30 @@ class SettingsRepository {
     );
   }
 
+  Future<ResponseModel> updateReminderTime(String time) async {
+    return await _apiClient.post(
+      AppConstants.updateReminderUrl,
+      data: {'daily_reminder_time': time},
+      handleError: false,
+    );
+  }
+
+  Future<ResponseModel> updateWeeklyBudget(double amount) async {
+    return await _apiClient.post(
+      AppConstants.updateWeeklyBudgetUrl,
+      data: {'weekly_budget_limit': amount},
+      handleError: false,
+    );
+  }
+
+  Future<ResponseModel> updateMonthlyBudget(double amount) async {
+    return await _apiClient.post(
+      AppConstants.updateMonthlyBudgetUrl,
+      data: {'monthly_budget_limit': amount},
+      handleError: false,
+    );
+  }
+
   Future<ResponseModel> updateBiometric(bool enabled) async {
     return await _apiClient.post(
       AppConstants.updateBiometricUrl,
@@ -34,6 +58,13 @@ class SettingsRepository {
     return await _apiClient.post(
       AppConstants.setPinUrl,
       data: {'pin': pin},
+      handleError: false,
+    );
+  }
+
+  Future<ResponseModel> clearCache() async {
+    return await _apiClient.post(
+      AppConstants.clearCacheUrl,
       handleError: false,
     );
   }

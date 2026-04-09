@@ -10,6 +10,7 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../auth/domain/models/user_model.dart';
 import '../domain/models/settings_model.dart';
 import '../domain/services/settings_service.dart';
+import '../../profile/domain/services/profile_service.dart';
 
 class BankAccount {
   final String name;
@@ -27,8 +28,9 @@ class BankAccount {
 
 class SettingsController extends GetxController {
   final SettingsService _settingsService;
+  final ProfileService _profileService;
 
-  SettingsController(this._settingsService);
+  SettingsController(this._settingsService, this._profileService);
 
   // Profile
   final userName = ''.obs;
@@ -36,6 +38,7 @@ class SettingsController extends GetxController {
   final userGender = ''.obs;
   final userEmail = ''.obs;
   final appVersion = '1.0.2'.obs;
+  final isLoading = false.obs;
 
   // App Settings
   final selectedLanguage = 'English'.obs;
@@ -69,24 +72,74 @@ class SettingsController extends GetxController {
     Language(code: 'as', name: 'Assamese', nativeName: 'অসমীয়া', symbol: 'অ'),
   ];
 
+  //final isLoading = false.obs;
+
   @override
   void onInit() {
     super.onInit();
+    fetchProfile(); // Fetch fresh data from Profile API on init
     _loadUserFromPrefs();
-    _fetchSettings();
+  }
+
+  Future<void> fetchProfile() async {
+    try {
+      isLoading.value = true;
+      final response = await _profileService.getProfile();
+      if (response.isSuccess && response.body != null) {
+        final body = response.body as Map<String, dynamic>;
+        // API response sometimes nests user data under 'data' and then 'user'
+        final data = body['data'] ?? body;
+        final userData = (data is Map && data.containsKey('user')) ? data['user'] : data;
+        
+        final user = UserModel.fromJson(userData as Map<String, dynamic>);
+        
+        // Merge with existing data to preserve local-only fields
+        final existingUserJson = SharedPrefs.getString(AppConstants.userData);
+        UserModel mergedUser = user;
+        if (existingUserJson != null) {
+          final existingUser = UserModel.fromJsonString(existingUserJson);
+          if (existingUser != null) {
+            mergedUser = existingUser.copyWith(
+              name: user.name,
+              email: user.email,
+              gender: user.gender,
+              reminderTime: user.reminderTime,
+              profilePhoto: user.profilePhoto,
+              profileComplete: user.profileComplete,
+              settings: user.settings ?? existingUser.settings,
+              userTypes: user.userTypes.isNotEmpty ? user.userTypes : existingUser.userTypes,
+            );
+          }
+        }
+
+        // Update local storage
+        await SharedPrefs.setString(AppConstants.userData, mergedUser.toJsonString());
+        
+        // Refresh local Rx variables
+        _loadUserFromPrefs();
+      }
+    } catch (e) {
+      debugPrint('Error fetching profile in settings: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   // ─── Public refresh ───────────────────────────────────────────────────────
 
   /// Call this after role/profile update to sync UI from SharedPrefs
-  void refreshProfile() => _loadUserFromPrefs();
+  void refreshProfile() {
+    _loadUserFromPrefs();
+  }
 
   // ─── Private ──────────────────────────────────────────────────────────────
 
-  void _loadUserFromPrefs() {    final userJson = SharedPrefs.getString(AppConstants.userData);
+  void _loadUserFromPrefs() {
+    final userJson = SharedPrefs.getString(AppConstants.userData);
     if (userJson == null || userJson.isEmpty) return;
     final user = UserModel.fromJsonString(userJson);
     if (user == null) return;
+
     userName.value = user.name.isNotEmpty ? user.name : 'User';
     userGender.value = user.gender ?? '';
     userRole.value = user.userTypes.isNotEmpty
@@ -94,12 +147,34 @@ class SettingsController extends GetxController {
             .map((e) => e
                 .toString()
                 .split('_')
-                .map((w) => w.isNotEmpty
-                    ? '${w[0].toUpperCase()}${w.substring(1)}'
-                    : '')
+                .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
                 .join(' '))
             .join(', ')
         : 'No role selected';
+
+    // Populate settings from UserModel
+    if (user.settings != null) {
+      isNotificationsEnabled.value = user.settings!.notificationsEnabled;
+      isBiometricEnabled.value = user.settings!.biometricEnabled;
+      if (user.settings!.weeklyBudgetLimit != null) {
+        weeklyBudget.value = user.settings!.weeklyBudgetLimit!;
+      }
+      if (user.settings!.monthlyBudgetLimit != null) {
+        monthlyBudget.value = user.settings!.monthlyBudgetLimit!;
+      }
+    }
+
+    // Populate reminder time
+    String? rTime = user.reminderTime ?? user.settings?.dailyReminderTime;
+    if (rTime != null && rTime.contains(':')) {
+      final parts = rTime.split(':');
+      if (parts.length >= 2) {
+        reminderTime.value = TimeOfDay(
+          hour: int.tryParse(parts[0]) ?? 8,
+          minute: int.tryParse(parts[1]) ?? 0,
+        );
+      }
+    }
   }
 
   Future<void> _fetchSettings() async {
@@ -295,15 +370,41 @@ class SettingsController extends GetxController {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final timeStr = selectedTime.format(context);
-                    reminderTime.value = selectedTime;
-                    Navigator.of(context).pop();
-                    Future.delayed(const Duration(milliseconds: 500), () {
-                      CustomSnackbar.showSuccess(
-                          'Daily reminder set for $timeStr',
-                          title: 'Reminder Updated');
-                    });
+                  onPressed: () async {
+                    final hourStr = selectedTime.hour.toString().padLeft(2, '0');
+                    final minuteStr = selectedTime.minute.toString().padLeft(2, '0');
+                    final timeStr = '$hourStr:$minuteStr';
+
+                    isLoading.value = true;
+                    final response = await _settingsService.updateReminderTime(timeStr);
+                    isLoading.value = false;
+
+                    if (response.isSuccess) {
+                      reminderTime.value = selectedTime;
+                      
+                      // Update SharedPrefs with the new reminder time
+                      final userJson = SharedPrefs.getString(AppConstants.userData);
+                      if (userJson != null) {
+                        final user = UserModel.fromJsonString(userJson);
+                        if (user != null) {
+                          final updatedUser = user.copyWith(
+                            reminderTime: timeStr,
+                            settings: user.settings?.copyWith(dailyReminderTime: timeStr) ??
+                                      UserSettings(dailyReminderTime: timeStr),
+                          );
+                          await SharedPrefs.setString(AppConstants.userData, updatedUser.toJsonString());
+                        }
+                      }
+
+                      Navigator.of(context).pop();
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        CustomSnackbar.showSuccess('Daily reminder set for $timeStr');
+                      });
+                    } else {
+                      CustomSnackbar.showError(
+                        response.message.isNotEmpty ? response.message : 'Failed to update reminder time',
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
@@ -323,7 +424,7 @@ class SettingsController extends GetxController {
           ),
         );
       }),
-      isScrollControlled: false,
+      isScrollControlled: true,
     );
   }
 
@@ -336,16 +437,22 @@ class SettingsController extends GetxController {
         TextEditingController(text: budget.value.toInt().toString());
 
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      SingleChildScrollView(
+        child: Container(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Center(
               child: Container(
                 width: 40,
@@ -431,15 +538,67 @@ class SettingsController extends GetxController {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final val = double.tryParse(textController.text);
                   if (val != null) {
-                    budget.value = val;
-                    Navigator.of(context).pop();
-                    Future.delayed(const Duration(milliseconds: 500), () {
-                      CustomSnackbar.showSuccess(
-                          '$type budget updated to ₹${NumberFormat('#,###').format(val)}');
-                    });
+                    if (isWeekly) {
+                      isLoading.value = true;
+                      final response = await _settingsService.updateWeeklyBudget(val);
+                      isLoading.value = false;
+
+                      if (response.isSuccess) {
+                        budget.value = val;
+                        // Synchronize SharedPrefs so other screens are in sync
+                        final userJson = SharedPrefs.getString(AppConstants.userData);
+                        if (userJson != null) {
+                          final user = UserModel.fromJsonString(userJson);
+                          if (user != null) {
+                            final updatedUser = user.copyWith(
+                              settings: user.settings?.copyWith(weeklyBudgetLimit: val) ??
+                                        UserSettings(weeklyBudgetLimit: val),
+                            );
+                            await SharedPrefs.setString(AppConstants.userData, updatedUser.toJsonString());
+                          }
+                        }
+                        Navigator.of(context).pop();
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          CustomSnackbar.showSuccess('Weekly budget updated successfully');
+                        });
+                      } else {
+                        CustomSnackbar.showError(
+                          response.message.isNotEmpty ? response.message : 'Failed to update budget',
+                        );
+                      }
+                    } else {
+                      // Monthly budget
+                      isLoading.value = true;
+                      final response = await _settingsService.updateMonthlyBudget(val);
+                      isLoading.value = false;
+
+                      if (response.isSuccess) {
+                        budget.value = val;
+                        // Synchronize SharedPrefs so other screens are in sync
+                        final userJson = SharedPrefs.getString(AppConstants.userData);
+                        if (userJson != null) {
+                          final user = UserModel.fromJsonString(userJson);
+                          if (user != null) {
+                            final updatedUser = user.copyWith(
+                              settings: user.settings?.copyWith(monthlyBudgetLimit: val) ??
+                                        UserSettings(monthlyBudgetLimit: val),
+                            );
+                            await SharedPrefs.setString(AppConstants.userData, updatedUser.toJsonString());
+                          }
+                        }
+                        Navigator.of(context).pop();
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          CustomSnackbar.showSuccess('Monthly budget updated successfully');
+                        });
+                      } else {
+                        CustomSnackbar.showError(
+                          response.message.isNotEmpty ? response.message : 'Failed to update budget',
+                        );
+                      }
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -450,16 +609,28 @@ class SettingsController extends GetxController {
                       borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Save Budget',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Obx(() => isLoading.value
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Save Budget',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold))),
               ),
             ),
             const SizedBox(height: 16),
           ],
         ),
       ),
-      isScrollControlled: false,
+
+      )
+
+     //
     );
   }
 
@@ -480,12 +651,20 @@ class SettingsController extends GetxController {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              Future.delayed(const Duration(milliseconds: 300), () {
-                CustomSnackbar.showSuccess('Cache cleared successfully',
+              
+              // Show loading if needed, or just call the API
+              final response = await _settingsService.clearCache();
+              
+              if (response.isSuccess) {
+                CustomSnackbar.showSuccess(
+                    response.message.isNotEmpty ? response.message : 'Cache cleared successfully',
                     title: 'Done');
-              });
+              } else {
+                CustomSnackbar.showError(
+                    response.message.isNotEmpty ? response.message : 'Failed to clear cache');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryColor,

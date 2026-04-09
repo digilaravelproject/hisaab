@@ -18,6 +18,7 @@ class AppRoutes {
   static const String setPin = '/setPin';
   static const String faq = '/faq';
   static const String contactUs = '/contactUs';
+  static const String privacyPolicy = '/privacyPolicy';
   static const String terms = '/terms';
   static const String dataBackup = '/dataBackup';
 }
