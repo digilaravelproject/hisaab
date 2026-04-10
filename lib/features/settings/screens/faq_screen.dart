@@ -2,8 +2,23 @@ import 'package:credit_debit/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class FaqScreen extends StatelessWidget {
+import '../../help_support/controllers/help_support_controller.dart';
+
+class FaqScreen extends StatefulWidget {
   const FaqScreen({Key? key}) : super(key: key);
+
+  @override
+  State<FaqScreen> createState() => _FaqScreenState();
+}
+
+class _FaqScreenState extends State<FaqScreen> {
+  final controller = Get.find<HelpAndSupportController>();
+
+  @override
+  void initState() {
+    super.initState();
+    controller.fetchPage('/api/v1/static/faqs');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,16 +34,24 @@ class FaqScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        children: [
-          _buildFaqItem('How do I add a new transaction?', 'Tap the plus (+) button on the Home or Dashboard screen to record a new income or expense entry.'),
-          _buildFaqItem('Can I export my reports?', 'Yes, navigate to the Reports screen and tap the download icon. You can export data as PDF or Excel files.'),
-          _buildFaqItem('How do I link a bank account?', 'Go to Settings > Add New Bank. Follow the instructions to securely link your bank for automatic syncing.'),
-          _buildFaqItem('Is my data secure?', 'Absolutely. We use industry-standard encryption and optional biometric/PIN locks to keep your financial data private.'),
-          _buildFaqItem('How do I set a budget?', 'In Settings, look for "Weekly Budget Limit" or "Monthly Budget Limit" to set your spending targets.'),
-        ],
-      ),
+      body: Obx(() {
+        if (controller.isLoading.value && controller.faqItems.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (controller.faqItems.isEmpty) {
+          return const Center(child: Text('No FAQs found'));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          itemCount: controller.faqItems.length,
+          itemBuilder: (context, index) {
+            final item = controller.faqItems[index];
+            return _buildFaqItem(item['question'] ?? '', item['answer'] ?? '');
+          },
+        );
+      }),
     );
   }
 

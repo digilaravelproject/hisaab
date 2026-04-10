@@ -20,6 +20,7 @@ class HelpAndSupportController extends GetxController {
 
   final isLoading = false.obs;
   Rx<StaticPageModel?> staticPage = Rx<StaticPageModel?>(null);
+  final faqItems = <Map<String, String>>[].obs;
 
   // Contact Us fields
   final subjectController = TextEditingController();
@@ -55,6 +56,9 @@ class HelpAndSupportController extends GetxController {
       final result = await _getStaticPageUseCase.execute(path);
       if (result != null) {
         staticPage.value = result;
+        if (path.contains('faq')) {
+          _parseFaqs(result.content);
+        }
       } else {
         CustomSnackbar.showError(
             _getStaticPageUseCase.lastErrorMessage ?? 'Failed to load content');
@@ -95,6 +99,23 @@ class HelpAndSupportController extends GetxController {
       CustomSnackbar.showError(e.toString());
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void _parseFaqs(String html) {
+    faqItems.clear();
+    // Regex to match <h2>Quest</h2> and <p>Answer</p>
+    // We assume they appear in pairs.
+    final qMatches = RegExp(r'<h2>(.*?)</h2>', dotAll: true).allMatches(html).toList();
+    final aMatches = RegExp(r'<p>(.*?)</p>', dotAll: true).allMatches(html).toList();
+
+    for (int i = 0; i < qMatches.length; i++) {
+      if (i < aMatches.length) {
+        faqItems.add({
+          'question': qMatches[i].group(1) ?? '',
+          'answer': aMatches[i].group(1) ?? '',
+        });
+      }
     }
   }
 }

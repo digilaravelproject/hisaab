@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../features/transactions/controllers/category_controller.dart';
 import '../../features/transactions/controllers/transaction_controller.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
 import '../theme/app_colors.dart';
@@ -49,7 +51,7 @@ class TransactionActionSheet {
               label: 'Attach Bill / Receipt',
               onTap: () {
                 Navigator.pop(context);
-                _showAttachmentOptions(context, tx);
+                _showAttachmentOptions(context, tx, controller);
               },
             ),
             Container(height: 1, color: AppColors.slate100, margin: const EdgeInsets.symmetric(vertical: 20)),
@@ -72,62 +74,74 @@ class TransactionActionSheet {
   }
 
   static void _showCategoryPicker(BuildContext context, TransactionModel tx, TransactionController controller) {
+    final categoryController = Get.find<CategoryController>();
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Change Category', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate800)),
             const SizedBox(height: 20),
-            GridView.builder(
-              shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1,
-              ),
-              itemCount: controller.categories.length - 1, // Exclude 'All'
-              itemBuilder: (context, index) {
-                final category = controller.categories.where((c) => c != 'All').elementAt(index);
-                final isSelected = tx.category == category;
-                return InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                    // In a real app, update the transaction category here via controller
-                    CustomSnackbar.showSuccess('Category updated to $category');
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primaryColor.withOpacity(0.1) : AppColors.slate100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isSelected ? AppColors.primaryColor : Colors.transparent),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(TransactionHelper.getCategoryIcon(category), color: isSelected ? AppColors.primaryColor : AppColors.slate500),
-                        const SizedBox(height: 8),
-                        Text(
-                          category,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? AppColors.primaryColor : AppColors.slate500,
-                          ),
-                        ),
-                      ],
-                    ),
+            Expanded(
+              child: Obx(() {
+                if (categoryController.categories.isEmpty) {
+                  return const Center(child: Text('No categories available'));
+                }
+                
+                return GridView.builder(
+                  shrinkWrap: true,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1,
                   ),
+                  itemCount: categoryController.categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categoryController.categories[index];
+                    final isSelected = tx.categoryId == category.id;
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        controller.categorizeTransaction(tx.id, category.id, businessId: tx.businessId);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primaryColor.withOpacity(0.1) : AppColors.slate100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isSelected ? AppColors.primaryColor : Colors.transparent),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(TransactionHelper.getCategoryIcon(category.name), color: isSelected ? AppColors.primaryColor : AppColors.slate500),
+                            const SizedBox(height: 8),
+                            Text(
+                              category.name,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected ? AppColors.primaryColor : AppColors.slate500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
-              },
+              }),
             ),
           ],
         ),
@@ -135,7 +149,7 @@ class TransactionActionSheet {
     );
   }
 
-  static void _showAttachmentOptions(BuildContext context, TransactionModel tx) {
+  static void _showAttachmentOptions(BuildContext context, TransactionModel tx, TransactionController controller) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -153,7 +167,7 @@ class TransactionActionSheet {
               label: 'Take Photo',
               onTap: () {
                 Navigator.pop(context);
-                CustomSnackbar.showInfo('Opening camera...');
+                controller.pickAndUploadReceipt(tx.id, source: ImageSource.camera);
               },
             ),
             _buildActionItem(
@@ -161,7 +175,7 @@ class TransactionActionSheet {
               label: 'Upload from Gallery',
               onTap: () {
                 Navigator.pop(context);
-                CustomSnackbar.showInfo('Opening gallery...');
+                controller.pickAndUploadReceipt(tx.id, source: ImageSource.gallery);
               },
             ),
             _buildActionItem(
@@ -169,7 +183,7 @@ class TransactionActionSheet {
               label: 'Upload PDF / Document',
               onTap: () {
                 Navigator.pop(context);
-                CustomSnackbar.showInfo('Opening file manager...');
+                controller.pickAndUploadReceipt(tx.id, isPdf: true);
               },
             ),
           ],

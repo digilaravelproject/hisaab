@@ -20,6 +20,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TransactionController transactionController = Get.find<TransactionController>();
   bool isPersonal = true; // Selected toggle state
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadAllData();
+  }
+
+  Future<void> _loadAllData() async {
+    await Future.wait([
+      transactionController.loadDashboardData(isBusiness: false),
+      transactionController.loadDashboardData(isBusiness: true),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +192,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => isPersonal = false),
+                onTap: () {
+                  setState(() => isPersonal = false);
+                  if (transactionController.businessDashboard.value == null) {
+                    transactionController.loadDashboardData(isBusiness: true);
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
@@ -209,137 +227,179 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 3️⃣ Total Balance Card (Hero Section)
   Widget _buildTotalBalanceCard() {
+    return Obx(() {
+      final dashboard = isPersonal 
+          ? transactionController.personalDashboard.value 
+          : transactionController.businessDashboard.value;
+      
+      if (dashboard == null) {
+        return _buildBalancePlaceholder();
+      }
+
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(Dimensions.height20),
+        decoration: BoxDecoration(
+          color: AppColors.primaryColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Total Balance',
+              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '₹ ${NumberFormat('#,##,###').format(dashboard.totalBalance)}',
+              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Income', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text('₹ ${NumberFormat('#,##,###').format(dashboard.income)}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Expense', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text('₹ ${NumberFormat('#,##,###').format(dashboard.expense)}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Net', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text('₹ ${NumberFormat('#,##,###').format(dashboard.net)}', style: const TextStyle(color: AppColors.emerald300, fontSize: 13, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildBalancePlaceholder() {
     return Container(
       width: double.infinity,
+      height: 140,
       padding: EdgeInsets.all(Dimensions.height20),
-      decoration: BoxDecoration(
-        color: AppColors.primaryColor, // Solid simple color
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Total Balance',
-            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w400),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isPersonal ? '₹ 1,25,000' : '₹ 4,50,000',
-            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Income', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Text(isPersonal ? '₹ 80,000' : '₹ 2,00,000', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Expense', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Text(isPersonal ? '₹ 55,000' : '₹ 1,10,000', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Net', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Text(isPersonal ? '₹ 25,000' : '₹ 90,000', style: const TextStyle(color: AppColors.emerald300, fontSize: 13, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: AppColors.primaryColor, borderRadius: BorderRadius.circular(16)),
+      child: const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
   }
 
   // 4️⃣ Today Summary Card
   Widget _buildTodaySummaryCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Today Activity',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate800),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Credit', style: TextStyle(color: AppColors.slate500, fontSize: 11)),
-                    const SizedBox(height: 2),
-                    Text(
-                      isPersonal ? '₹ 5,000' : '₹ 15,000',
-                      style: const TextStyle(color: AppColors.emerald500, fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+    return Obx(() {
+      final dashboard = isPersonal 
+          ? transactionController.personalDashboard.value 
+          : transactionController.businessDashboard.value;
+      
+      if (dashboard == null) return const SizedBox();
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Today Activity',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate800),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Credit', style: TextStyle(color: AppColors.slate500, fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text(
+                        '₹ ${NumberFormat('#,##,###').format(dashboard.todayActivity.credit)}',
+                        style: const TextStyle(color: AppColors.emerald500, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Debit', style: TextStyle(color: AppColors.slate500, fontSize: 11)),
-                    const SizedBox(height: 2),
-                    Text(
-                      isPersonal ? '₹ 2,000' : '₹ 4,500',
-                      style: const TextStyle(color: AppColors.rose500, fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Debit', style: TextStyle(color: AppColors.slate500, fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text(
+                        '₹ ${NumberFormat('#,##,###').format(dashboard.todayActivity.debit)}',
+                        style: const TextStyle(color: AppColors.rose500, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+              ],
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   // 5️⃣ Weekly Budget Progress Card
   Widget _buildWeeklyBudgetCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Weekly Budget',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate800),
-          ),
-          const SizedBox(height: 16),
-          _buildBudgetProgress('Petrol', 0.7, AppColors.primaryColor, '70%'),
-          const SizedBox(height: 12),
-          _buildBudgetProgress('Food', 0.4, AppColors.primaryColor, '40%'),
-        ],
-      ),
-    );
+    return Obx(() {
+      final dashboard = isPersonal 
+          ? transactionController.personalDashboard.value 
+          : transactionController.businessDashboard.value;
+      
+      if (dashboard == null || dashboard.weeklyBudget.isEmpty) return const SizedBox();
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Weekly Budget',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate800),
+            ),
+            const SizedBox(height: 16),
+            ...dashboard.weeklyBudget.map((budget) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildBudgetProgress(
+                budget.categoryName, 
+                budget.percentage / 100, 
+                budget.percentage > 100 ? AppColors.rose500 : AppColors.primaryColor, 
+                '${budget.percentage.toInt()}% spent'
+              ),
+            )).toList(),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildBudgetProgress(String title, double percentage, Color color, String subtitle) {
@@ -370,11 +430,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRecentTransactions() {
     // Explicitly grab the list to register reactivity properly in GetX Obx
     final allTxs = transactionController.allTransactions.toList();
-    final scope = isPersonal ? TransactionScope.personal : TransactionScope.business;
     
-    final transactions = allTxs
-        .where((tx) => tx.scope == scope)
-        .toList();
+    // Unify view: show top 5 from ALL transactions regardless of Personal/Business selection
+    final transactions = List<TransactionModel>.from(allTxs);
     
     // Sort by date latest first and take top 5
     transactions.sort((a, b) => b.date.compareTo(a.date));

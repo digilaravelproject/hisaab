@@ -1,6 +1,9 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/custom_snackbar.dart';
+import '../domain/models/dashboard_model.dart';
 import '../domain/repositories/transaction_repository.dart';
 
 enum TransactionType { income, expense, cash, bank }
@@ -13,7 +16,11 @@ class TransactionModel {
   final bool isCredit;
   final DateTime date;
   final String category;
+  final int? categoryId;
   final String account; // Bank name or "Cash"
+  final int? bankAccountId;
+  final String? businessName;
+  final int? businessId;
   final TransactionScope scope;
   final bool hasAttachment;
   final String? note;
@@ -26,7 +33,11 @@ class TransactionModel {
     required this.isCredit,
     required this.date,
     required this.category,
+    this.categoryId,
     required this.account,
+    this.bankAccountId,
+    this.businessName,
+    this.businessId,
     required this.scope,
     this.hasAttachment = false,
     this.note,
@@ -34,28 +45,39 @@ class TransactionModel {
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    // Determine scope: If business object exists and name is NOT 'Personal', it's Business.
-    // Otherwise, if business is null, 0, or "0", it's Personal.
     TransactionScope scope = TransactionScope.personal;
+    int? bId;
+    String? bName;
     
     final businessData = json['business'];
     if (businessData != null) {
       if (businessData is Map) {
-        // It's a nested object
-        if (businessData['name'] != 'Personal' && businessData['id'] != null && businessData['id'].toString() != "0") {
+        bId = businessData['id'] != null ? int.tryParse(businessData['id'].toString()) : null;
+        bName = businessData['name']?.toString();
+        // If name is 'Personal' or id is 0, 3 (standard Personal IDs), it's Personal
+        if (bName != null && bName.toLowerCase() != 'personal' && bId != null && bId != 0 && bId != 3) {
           scope = TransactionScope.business;
-        } else {
-          scope = TransactionScope.personal;
         }
       } else {
-        // It might be a direct ID
-        final bId = businessData.toString();
-        if (bId != "0" && bId != "" && bId != "3") { // Assuming 3 is Personal as per AddEntryScreen
+        bId = int.tryParse(businessData.toString());
+        if (bId != 0 && bId != null && bId != 3) {
           scope = TransactionScope.business;
-        } else {
-          scope = TransactionScope.personal;
         }
       }
+    }
+
+    final categoryData = json['category'];
+    int? catId;
+    String catName = 'Uncategorized';
+    if (categoryData != null && categoryData is Map) {
+      catId = categoryData['id'] != null ? int.tryParse(categoryData['id'].toString()) : null;
+      catName = categoryData['name'] ?? 'Uncategorized';
+    }
+
+    final bankData = json['bank_account'];
+    int? bankId;
+    if (bankData != null && bankData is Map) {
+      bankId = bankData['id'] != null ? int.tryParse(bankData['id'].toString()) : null;
     }
 
     return TransactionModel(
@@ -64,10 +86,15 @@ class TransactionModel {
       amount: json['amount'] != null ? double.parse(json['amount'].toString()) : 0.0,
       isCredit: json['type'] == 'credit',
       date: json['transaction_date'] != null ? DateTime.parse(json['transaction_date']) : DateTime.now(),
-      category: json['category']?['name'] ?? 'Uncategorized',
+      category: catName,
+      categoryId: catId,
       account: (json['source']?.toString() ?? 'Cash').capitalizeFirst ?? 'Cash',
+      bankAccountId: bankId,
+      businessId: bId,
+      businessName: bName,
       scope: scope,
       note: json['description'],
+      isUncategorized: json['is_categorized'] == false,
     );
   }
 }
@@ -117,33 +144,57 @@ class TransactionController extends GetxController {
     return false;
   }
 
+  Future<bool> updateTransaction(String id, Map<String, dynamic> data) async {
+    try {
+      isSaving.value = true;
+      final response = await _repository.updateTransaction(id, data);
+      if (response.isSuccess) {
+        CustomSnackbar.showSuccess(response.message);
+        loadTransactions(isRefresh: true);
+        return true;
+      } else {
+        CustomSnackbar.showError(response.message);
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Update failed: $e');
+    } finally {
+      isSaving.value = false;
+    }
+    return false;
+  }
+
+  final selectedCategoryId = Rx<int?>(null);
+  final selectedBusinessId = Rx<int?>(null);
+  final selectedBankAccountId = Rx<int?>(null);
+
+  final personalDashboard = Rxn<DashboardModel>();
+  final businessDashboard = Rxn<DashboardModel>();
+  final isDashboardLoading = false.obs;
+  
+  final categories = <String>[].obs;
+  final accounts = <String>[].obs;
+  final isSearchLoading = false.obs;
+
   // Temporary states for the Filter Bottom Sheet session
   final tempType = 'All'.obs;
   final tempSort = 'Latest first'.obs;
   final tempCategory = 'All'.obs;
   final tempCategoryId = Rx<int?>(null);
+  final tempBusinessId = Rx<int?>(null);
+  final tempBankAccountId = Rx<int?>(null);
   final tempAccount = 'All'.obs;
   final tempScope = 'All'.obs;
   final tempStart = Rx<DateTime?>(null);
   final tempEnd = Rx<DateTime?>(null);
-
-  final selectedCategoryId = Rx<int?>(null);
-  final categories = <String>[].obs;
-  final accounts = <String>[].obs;
-  final isSearchLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
     loadTransactions();
     
-    // Debounce search API calls
+    // Debounce search API calls - now calls unified loadTransactions
     debounce(searchQuery, (_) {
-      if (searchQuery.value.isNotEmpty) {
-        searchTransactions(searchQuery.value);
-      } else {
-        loadTransactions(isRefresh: true);
-      }
+      loadTransactions(isRefresh: true);
     }, time: const Duration(milliseconds: 500));
   }
 
@@ -167,8 +218,13 @@ class TransactionController extends GetxController {
         'per_page': '20',
       };
       
+      // Search
+      if (searchQuery.value.isNotEmpty) {
+        params['search_string'] = searchQuery.value;
+      }
+
       // Category Filter
-      if (selectedCategoryId.value != null && selectedCategory.value != 'All') {
+      if (selectedCategoryId.value != null) {
         params['category_id'] = selectedCategoryId.value.toString();
       }
 
@@ -178,9 +234,27 @@ class TransactionController extends GetxController {
         else if (selectedType.value == 'Expense') params['type'] = 'debit';
       }
 
-      // Account Filter (Maps to 'source' in API)
+      // Account/Source Filter
       if (selectedAccount.value != 'All') {
         params['source'] = selectedAccount.value.toLowerCase();
+      }
+      
+      // Business Filter
+      if (selectedBusinessId.value != null) {
+        params['business_id'] = selectedBusinessId.value.toString();
+      }
+      
+      // Bank Account Filter
+      if (selectedBankAccountId.value != null) {
+        params['bank_account_id'] = selectedBankAccountId.value.toString();
+      }
+
+      // Date Range
+      if (startDate.value != null) {
+        params['from_date'] = DateFormat('yyyy-MM-dd').format(startDate.value!);
+      }
+      if (endDate.value != null) {
+        params['to_date'] = DateFormat('yyyy-MM-dd').format(endDate.value!);
       }
 
       final response = await _repository.getTransactions(params);
@@ -206,13 +280,15 @@ class TransactionController extends GetxController {
         } else {
           isMoreDataAvailable.value = false;
         }
-        if (selectedCategoryId.value == null || selectedCategory.value == 'All') {
+        
+        // Always maintain filter options for existing local categorizers if needed
+        if (selectedCategoryId.value == null) {
           _extractFilterOptions();
         }
         applyFilters();
       }
     } catch (e) {
-      // Silently handle error as requested
+      // Silently handle
     } finally {
       isLoading.value = false;
       isPaginationLoading.value = false;
@@ -226,6 +302,8 @@ class TransactionController extends GetxController {
     tempSort.value = selectedSort.value;
     tempCategory.value = selectedCategory.value;
     tempCategoryId.value = selectedCategoryId.value;
+    tempBusinessId.value = selectedBusinessId.value;
+    tempBankAccountId.value = selectedBankAccountId.value;
     tempAccount.value = selectedAccount.value;
     tempScope.value = selectedScope.value;
     tempStart.value = startDate.value;
@@ -281,6 +359,8 @@ class TransactionController extends GetxController {
     selectedSort.value = tempSort.value;
     selectedCategory.value = tempCategory.value;
     selectedCategoryId.value = tempCategoryId.value;
+    selectedBusinessId.value = tempBusinessId.value;
+    selectedBankAccountId.value = tempBankAccountId.value;
     selectedAccount.value = tempAccount.value;
     selectedScope.value = tempScope.value;
     startDate.value = tempStart.value;
@@ -357,36 +437,9 @@ class TransactionController extends GetxController {
     searchQuery.value = query;
   }
 
-  Future<void> searchTransactions(String query) async {
-    if (query.isEmpty) return;
-    
-    try {
-      isSearchLoading.value = true;
-      final response = await _repository.searchTransactions(query);
-      
-      if (response.isSuccess && response.body is List) {
-        final List<dynamic> list = response.body;
-        final searchResults = list.map((json) => TransactionModel.fromJson(json)).toList();
-        
-        // When searching, we temporarily replace allTransactions with search results
-        // so that the existing applyFilters logic still works for sorting/filtering.
-        allTransactions.assignAll(searchResults);
-        
-        // Reset pagination for search results
-        isMoreDataAvailable.value = false; 
-        
-        applyFilters();
-      }
-    } catch (e) {
-      // Silently handle
-    } finally {
-      isSearchLoading.value = false;
-    }
-  }
-
   void setType(String type) {
     selectedType.value = type;
-    applyFilters();
+    loadTransactions(isRefresh: true);
   }
 
   void setSort(String sort) {
@@ -463,6 +516,8 @@ class TransactionController extends GetxController {
     tempSort.value = 'Latest first';
     tempCategory.value = 'All';
     tempCategoryId.value = null;
+    tempBusinessId.value = null;
+    tempBankAccountId.value = null;
     tempAccount.value = 'All';
     tempScope.value = 'All';
     tempStart.value = null;
@@ -470,4 +525,86 @@ class TransactionController extends GetxController {
   }
 
   int get uncategorizedCount => allTransactions.where((tx) => tx.isUncategorized).length;
+
+  bool hasDataInScope(TransactionScope scope) {
+    return allTransactions.any((tx) => tx.scope == scope);
+  }
+
+  Future<void> pickAndUploadReceipt(String transactionId, {ImageSource? source, bool isPdf = false}) async {
+    try {
+      if (isPdf) {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+        );
+        if (result != null) {
+          await _uploadReceipt(transactionId, document: result);
+        }
+      } else if (source != null) {
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(source: source);
+        if (image != null) {
+          await _uploadReceipt(transactionId, image: image);
+        }
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Failed to pick file: $e');
+    }
+  }
+
+  Future<void> _uploadReceipt(String transactionId, {XFile? image, FilePickerResult? document}) async {
+    try {
+      isLoading.value = true;
+      final response = await _repository.uploadReceipt(transactionId, image: image, document: document);
+      if (response.isSuccess) {
+        CustomSnackbar.showSuccess(response.message);
+        loadTransactions(isRefresh: true);
+      } else {
+        CustomSnackbar.showError(response.message);
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Upload failed: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> categorizeTransaction(String id, int categoryId, {int? businessId}) async {
+    try {
+      isLoading.value = true;
+      final response = await _repository.categorizeTransaction(id, {
+        "category_id": categoryId,
+        "business_id": businessId,
+      });
+      if (response.isSuccess) {
+        CustomSnackbar.showSuccess(response.message);
+        loadTransactions(isRefresh: true);
+      } else {
+        CustomSnackbar.showError(response.message);
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Categorization failed: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loadDashboardData({bool isBusiness = false}) async {
+    try {
+      isDashboardLoading.value = true;
+      final response = await _repository.getDashboardData(isBusiness: isBusiness);
+      if (response.isSuccess) {
+        final dashboard = DashboardModel.fromJson(response.body);
+        if (isBusiness) {
+          businessDashboard.value = dashboard;
+        } else {
+          personalDashboard.value = dashboard;
+        }
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Failed to load dashboard: $e');
+    } finally {
+      isDashboardLoading.value = false;
+    }
+  }
 }

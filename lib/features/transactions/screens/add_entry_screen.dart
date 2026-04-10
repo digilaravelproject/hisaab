@@ -39,7 +39,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     'Debit': 'debit',
   };
 
-  final List<String> businesses = ['My Farm', 'City Shop', 'Personal'];
+  final List<String> businesses = ['Personal','Business'];
 
   List<String> get availableCategories {
     final controller = Get.find<TransactionController>();
@@ -73,7 +73,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       selectedDate = editingTransaction!.date;
       
       final categoryController = Get.find<CategoryController>();
-      final cats = categoryController.getCategoriesByType(entryType == 'Income' ? 'income' : 'expense');
+      final cats = categoryController.categories;
       selectedCategory = cats.firstWhereOrNull((c) => c.name == editingTransaction!.category);
       
       final businessVal = editingTransaction!.scope == TransactionScope.business ? 'City Shop' : 'Personal';
@@ -162,22 +162,21 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Category Selector
               _buildLabel('Category'),
               GetX<CategoryController>(
                 builder: (controller) {
-                  final filteredCats = controller.getCategoriesByType(_selectedTransactionType == 'credit' ? 'income' : 'expense');
+                  final allCats = controller.categories;
                   
-                  if (selectedCategory == null && filteredCats.isNotEmpty) {
+                  if (selectedCategory == null && allCats.isNotEmpty) {
                     Future.microtask(() {
                       setState(() {
-                        selectedCategory = filteredCats.first;
+                        selectedCategory = allCats.first;
                       });
                     });
                   }
 
                   return InkWell(
-                    onTap: () => _showCategoryPicker(filteredCats),
+                    onTap: () => _showCategoryPicker(allCats),
                     child: InputDecorator(
                       decoration: _inputDecoration(Icons.category_outlined),
                       child: Row(
@@ -456,7 +455,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         "description": _noteController.text.isNotEmpty ? _noteController.text : entryType,
       };
 
-      final success = await controller.addTransaction(data);
+      final bool success;
+      if (editingTransaction != null) {
+        success = await controller.updateTransaction(editingTransaction!.id, data);
+      } else {
+        success = await controller.addTransaction(data);
+      }
+
       if (success) {
         Get.back();
       }

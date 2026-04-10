@@ -5,6 +5,7 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/auth/screens/profile_setup_screen.dart';
 import '../features/bank/screens/bank_account_linking_screen.dart';
+import '../features/reports/domain/repositories/reports_repository.dart';
 import '../features/settings/domain/repositories/settings_repository.dart';
 import '../features/settings/domain/services/settings_service.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
@@ -136,15 +137,15 @@ class RouteHelper {
         Get.lazyPut(() => TransactionRepository(apiClient: Get.find<ApiClient>()));
         Get.lazyPut(() => DashboardController());
         Get.lazyPut(() => TransactionController(repository: Get.find<TransactionRepository>()));
-        Get.lazyPut(() => BusinessController());
-        Get.lazyPut(() => ReportsController());
+        Get.lazyPut(() => ReportsRepository(Get.find<ApiClient>()));
+        Get.lazyPut(() => ReportsController(Get.find<ReportsRepository>()));
         Get.lazyPut(() => SettingsRepository(Get.find<ApiClient>()));
         Get.lazyPut(() => SettingsService(Get.find<SettingsRepository>()));
         Get.lazyPut(() => ProfileRepository(Get.find<ApiClient>()));
         Get.lazyPut(() => ProfileService(Get.find<ProfileRepository>()));
-        Get.lazyPut(() => SettingsController(Get.find<SettingsService>(), Get.find<ProfileService>()));
-        Get.lazyPut(() => CategoryRepository(apiClient: Get.find<ApiClient>()));
-        Get.lazyPut(() => CategoryController(repository: Get.find<CategoryRepository>()), fenix: true);
+        Get.lazyPut<SettingsController>(() => SettingsController(Get.find<SettingsService>(), Get.find<ProfileService>()));
+        Get.lazyPut<CategoryRepository>(() => CategoryRepository(apiClient: Get.find<ApiClient>()));
+        Get.lazyPut<CategoryController>(() => CategoryController(repository: Get.find<CategoryRepository>()), fenix: true);
         Get.lazyPut(() => HomeController(), fenix: true);
         Get.lazyPut(() => BudgetController(), fenix: true);
       }),
@@ -188,6 +189,7 @@ class RouteHelper {
     GetPage(
       name: AppRoutes.faq,
       page: () => const FaqScreen(),
+      binding: HelpSupportBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(

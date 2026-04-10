@@ -7,6 +7,7 @@ import '../../../routes/route_helper.dart';
 import '../../../core/utils/custom_snackbar.dart';
 import '../../../core/utils/transaction_helper.dart';
 import '../../../core/utils/transaction_action_sheet.dart';
+import '../../home/controllers/home_controller.dart';
 import '../controllers/transaction_controller.dart';
 import '../controllers/category_controller.dart';
 import '../domain/models/category_model.dart';
@@ -292,15 +293,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.slate800, fontSize: 14),
                           ),
                         ),
-                        if (tx.scope == TransactionScope.business)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.slate200,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('Business', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.slate600)),
-                          ),
+                        // if (tx.scope == TransactionScope.business)
+                        //   Container(
+                        //     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        //     decoration: BoxDecoration(
+                        //       color: AppColors.slate200,
+                        //       borderRadius: BorderRadius.circular(4),
+                        //     ),
+                        //     child: const Text('Business', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.slate600)),
+                        //   ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -729,10 +730,58 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildBusinessOptions() {
-    final options = ['All', 'Business', 'Personal'];
-    return ListView(
+    final homeController = Get.isRegistered<HomeController>() ? Get.find<HomeController>() : null;
+    final busList = homeController?.businesses ?? [];
+    
+    final allOptions = [
+       {'id': null, 'name': 'All'},
+       ...busList.map((b) => {'id': int.tryParse(b.id), 'name': b.name}),
+    ];
+
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: options.map((opt) => _buildSelectionItem(opt, controller.tempScope)).toList(),
+      itemCount: allOptions.length,
+      itemBuilder: (context, index) {
+        final opt = allOptions[index];
+        final name = opt['name'] as String;
+        final id = opt['id'] as int?;
+        
+        return Obx(() {
+          final isSelected = controller.tempBusinessId.value == id && (id != null || controller.tempScope.value == 'All');
+          // For 'All', we also check tempScope just in case
+          final effectiveSelected = id == null ? (controller.tempBusinessId.value == null) : (controller.tempBusinessId.value == id);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 4),
+            decoration: BoxDecoration(
+              color: effectiveSelected ? AppColors.primaryColor.withOpacity(0.05) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListTile(
+              onTap: () {
+                controller.tempBusinessId.value = id;
+                if (id == null) {
+                  controller.tempScope.value = 'All';
+                } else {
+                  controller.tempScope.value = name;
+                }
+              },
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: Text(
+                name, 
+                style: TextStyle(
+                  fontSize: 14, 
+                  color: effectiveSelected ? AppColors.primaryColor : AppColors.slate800,
+                  fontWeight: effectiveSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              trailing: effectiveSelected 
+                  ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryColor, size: 20)
+                  : null,
+            ),
+          );
+        });
+      },
     );
   }
 

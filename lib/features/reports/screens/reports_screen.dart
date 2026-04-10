@@ -35,24 +35,65 @@ class ReportsScreen extends GetView<ReportsController> {
           const SizedBox(width: 8),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () => controller.transactionController.loadTransactions(isRefresh: true),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildMonthSelector(),
-              if (controller.businesses.length > 2) _buildBusinessSelector(),
-              _buildSummaryCards(),
-              _buildIncomeExpenseChart(),
-              _buildCategoryBreakdown(),
-              _buildComparisonCard(),
-              const SizedBox(height: 120),
-            ],
-          ),
-        ),
-      ),
+      body: Obx(() {
+        final isLoading = controller.isLoading.value;
+        final status = controller.budgetStatus.value;
+
+        return Column(
+          children: [
+            _buildMonthSelector(),
+            Expanded(
+              child: Stack(
+                children: [
+                  if (status == null && !isLoading)
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.report_gmailerrorred_rounded, size: 60, color: Colors.grey.shade300),
+                          const SizedBox(height: 16),
+                          const Text('No report data found for this month', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                          TextButton(onPressed: () => controller.fetchBudgetStatus(), child: const Text('Try Again')),
+                        ],
+                      ),
+                    )
+                  else if (status != null)
+                    RefreshIndicator(
+                      onRefresh: () => controller.fetchBudgetStatus(),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSummaryCards(),
+                            _buildIncomeExpenseChart(),
+                            _buildCategoryBreakdown(),
+                            _buildComparisonCard(),
+                            const SizedBox(height: 120),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (isLoading)
+                    Container(
+                      color: Colors.white.withOpacity(status == null ? 0.0 : 0.5),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Loading report...', style: TextStyle(color: AppColors.primaryColor)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -124,17 +165,18 @@ class ReportsScreen extends GetView<ReportsController> {
   }
 
   Widget _buildSummaryCards() {
+    final status = controller.budgetStatus.value!.monthly;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Obx(() => Row(
+      child: Row(
         children: [
-          _buildSummaryCard('Income', controller.totalIncome, AppColors.emerald500, Icons.arrow_downward_rounded),
+          _buildSummaryCard('Income', status.income, AppColors.emerald500, Icons.arrow_downward_rounded),
           const SizedBox(width: 12),
-          _buildSummaryCard('Expense', controller.totalExpense, AppColors.rose500, Icons.arrow_upward_rounded),
+          _buildSummaryCard('Expense', status.spent, AppColors.rose500, Icons.arrow_upward_rounded),
           const SizedBox(width: 12),
-          _buildSummaryCard('Net', controller.netProfit, controller.netProfit >= 0 ? AppColors.primaryColor : Colors.orange, Icons.account_balance_wallet_outlined),
+          _buildSummaryCard('Net', status.net, status.net >= 0 ? AppColors.primaryColor : Colors.orange, Icons.account_balance_wallet_outlined),
         ],
-      )),
+      ),
     );
   }
 
@@ -174,6 +216,14 @@ class ReportsScreen extends GetView<ReportsController> {
   }
 
   Widget _buildIncomeExpenseChart() {
+    final weeks = controller.budgetStatus.value!.weeksBreakdown;
+    double maxAmount = 0;
+    for (var w in weeks) {
+      if (w.income > maxAmount) maxAmount = w.income;
+      if (w.spent > maxAmount) maxAmount = w.spent;
+    }
+    maxAmount = maxAmount == 0 ? 10000 : maxAmount * 1.2;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -189,48 +239,37 @@ class ReportsScreen extends GetView<ReportsController> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.shade100),
             ),
-            child: Obx(() {
-              final weeklyData = controller.weeklyData;
-              double maxAmount = 0;
-              for (var data in weeklyData) {
-                if (data['income']! > maxAmount) maxAmount = data['income']!;
-                if (data['expense']! > maxAmount) maxAmount = data['expense']!;
-              }
-              maxAmount = maxAmount == 0 ? 10000 : maxAmount * 1.2;
-
-              return BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxAmount,
-                  barTouchData: BarTouchData(enabled: true),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const days = ['1-7', '8-14', '15-21', '22-30'];
-                          final index = value.toInt();
-                          if (index < 0 || index >= days.length) return const SizedBox();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(days[index], style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                          );
-                        },
-                      ),
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxAmount,
+                barTouchData: BarTouchData(enabled: true),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= weeks.length) return const SizedBox();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text('W${index + 1}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        );
+                      },
                     ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: List.generate(weeklyData.length, (i) {
-                    return _makeGroupData(i, weeklyData[i]['income']!, weeklyData[i]['expense']!);
-                  }),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-              );
-            }),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(weeks.length, (i) {
+                  return _makeGroupData(i, weeks[i].income, weeks[i].spent);
+                }),
+              ),
+            ),
           ),
         ],
       ),
@@ -248,6 +287,8 @@ class ReportsScreen extends GetView<ReportsController> {
   }
 
   Widget _buildCategoryBreakdown() {
+    final categories = controller.budgetStatus.value!.categoryBreakdown;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Column(
@@ -255,32 +296,25 @@ class ReportsScreen extends GetView<ReportsController> {
         children: [
           const Text('Expense Breakdown', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800)),
           const SizedBox(height: 20),
-          Obx(() {
-            final data = controller.categoryBreakdown;
-            if (data.isEmpty) {
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.pie_chart_outline_rounded, size: 40, color: Colors.grey.shade300),
-                    const SizedBox(height: 12),
-                    Text('No expense data for this month', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-                  ],
-                ),
-              );
-            }
-            
-            final total = data.values.fold(0.0, (s, e) => s + e);
-            final sortedCategories = data.keys.toList()..sort((a, b) => data[b]!.compareTo(data[a]!));
-
-            return Column(
+          if (categories.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.pie_chart_outline_rounded, size: 40, color: Colors.grey.shade300),
+                  const SizedBox(height: 12),
+                  Text('No expense data for this month', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                ],
+              ),
+            )
+          else
+            Column(
               children: [
-                // Pie Chart Row
                 Row(
                   children: [
                     SizedBox(
@@ -290,13 +324,12 @@ class ReportsScreen extends GetView<ReportsController> {
                         PieChartData(
                           sectionsSpace: 2,
                           centerSpaceRadius: 35,
-                          sections: sortedCategories.map((cat) {
-                            final val = data[cat]!;
-                            final index = sortedCategories.indexOf(cat);
+                          sections: categories.map((cat) {
+                            final index = categories.indexOf(cat);
                             final color = index == 0 ? AppColors.primaryColor : AppColors.primaryColor.withOpacity((1.0 - (index * 0.2)).clamp(0.1, 0.8));
                             return PieChartSectionData(
                               color: color,
-                              value: val,
+                              value: cat.weeklySpent,
                               radius: 35,
                               showTitle: false,
                             );
@@ -315,13 +348,13 @@ class ReportsScreen extends GetView<ReportsController> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '₹${NumberFormat('#,##,###').format(total)}',
+                            '₹${NumberFormat('#,##,###').format(controller.budgetStatus.value!.monthly.spent)}',
                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.slate800),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Across ${data.length} categories',
-                            style: TextStyle(color: AppColors.primaryColor.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.bold),
+                            'Across ${categories.length} categories',
+                            style: TextStyle(color:AppColors.primaryColor.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -329,12 +362,8 @@ class ReportsScreen extends GetView<ReportsController> {
                   ],
                 ),
                 const SizedBox(height: 30),
-                
-                // Detailed List
-                ...sortedCategories.map((cat) {
-                  final val = data[cat]!;
-                  final percentage = (val / total * 100).toStringAsFixed(1);
-                  final index = sortedCategories.indexOf(cat);
+                ...categories.map((cat) {
+                  final index = categories.indexOf(cat);
                   final color = index == 0 ? AppColors.primaryColor : AppColors.primaryColor.withOpacity((1.0 - (index * 0.2)).clamp(0.1, 0.8));
                   
                   return Container(
@@ -352,20 +381,20 @@ class ReportsScreen extends GetView<ReportsController> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                              child: Icon(TransactionHelper.getCategoryIcon(cat), color: color, size: 18),
+                              child: Icon(TransactionHelper.getCategoryIcon(cat.categoryName), color: color, size: 18),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(cat, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.slate800, fontSize: 14)),
-                                  Text('$percentage% of total', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                                  Text(cat.categoryName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.slate800, fontSize: 14)),
+                                  Text('${cat.percentage.toStringAsFixed(1)}% of total', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                                 ],
                               ),
                             ),
                             Text(
-                              '₹${NumberFormat('#,##,###').format(val)}',
+                              '₹${NumberFormat('#,##,###').format(cat.weeklySpent)}',
                               style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.slate800, fontSize: 14),
                             ),
                           ],
@@ -374,7 +403,7 @@ class ReportsScreen extends GetView<ReportsController> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: val / total,
+                            value: cat.percentage / 100,
                             backgroundColor: Colors.grey.shade100,
                             valueColor: AlwaysStoppedAnimation<Color>(color),
                             minHeight: 6,
@@ -385,20 +414,20 @@ class ReportsScreen extends GetView<ReportsController> {
                   );
                 }).toList(),
               ],
-            );
-          }),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildComparisonCard() {
+    final status = controller.budgetStatus.value!.monthly;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Comparison', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('Monthly Comparison', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
@@ -416,25 +445,43 @@ class ReportsScreen extends GetView<ReportsController> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('vs Last Month', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
+                    const Text('Current Period', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(color: AppColors.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                      child: const Text('GOOD GROWTH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                      child: Text(status.isExceeded ? 'BUDGET EXCEEDED' : 'WITHIN BUDGET', 
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: status.isExceeded ? Colors.red : AppColors.primaryColor)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildComparisonItem('Income', controller.incomeGrowth),
+                _buildComparisonValue('Total Income', status.income, Colors.green),
                 const Divider(height: 24),
-                _buildComparisonItem('Expense', controller.expenseGrowth),
+                _buildComparisonValue('Total Spent', status.spent, Colors.red),
                 const Divider(height: 24),
-                _buildComparisonItem('Profit', controller.profitGrowth),
+                _buildComparisonValue('Net Balance', status.net, status.net >= 0 ? Colors.green : Colors.red),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildComparisonValue(String title, double amount, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          '₹${NumberFormat('#,##,###').format(amount)}',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 

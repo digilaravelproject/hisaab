@@ -42,7 +42,7 @@ class SplashController extends GetxController {
             case 2:
               Get.offAllNamed(RouteHelper.getChooseRoleRoute());
               break;
-            case 4:
+            case 3:
               Get.offAllNamed(RouteHelper.getBankLinkRoute());
               break;
             default:

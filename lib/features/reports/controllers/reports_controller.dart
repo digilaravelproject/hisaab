@@ -3,13 +3,21 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/custom_snackbar.dart';
 import '../../transactions/controllers/transaction_controller.dart';
+import '../domain/models/budget_status_model.dart';
+import '../domain/repositories/reports_repository.dart';
 
 class ReportsController extends GetxController {
   final TransactionController transactionController = Get.find<TransactionController>();
+  final ReportsRepository _repository;
+
+  ReportsController(this._repository);
 
   final selectedMonthIndex = (DateTime.now().month - 1).obs;
   final selectedYear = DateTime.now().year.obs;
   final selectedBusiness = 'All'.obs;
+
+  final budgetStatus = Rxn<BudgetStatusModel>();
+  final isLoading = false.obs;
   
   final months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -19,12 +27,38 @@ class ReportsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    fetchBudgetStatus();
   }
 
   void onMonthChanged(int index) {
     selectedMonthIndex.value = index;
-    // Update year if navigating across boundaries (simplified for now)
+    fetchBudgetStatus();
   }
+
+  Future<void> fetchBudgetStatus() async {
+    try {
+      isLoading.value = true;
+      final response = await _repository.getBudgetStatus(
+        selectedMonthIndex.value + 1,
+        selectedYear.value,
+      );
+      debugPrint('[PCB_APP] [REPORTS] isSuccess=${response.isSuccess} statusCode=${response.statusCode}');
+      
+      if (response.isSuccess && response.body != null) {
+        // response.body is already the 'data' object (ResponseModel unwraps it)
+        budgetStatus.value = BudgetStatusModel.fromJson(response.body);
+        debugPrint('[PCB_APP] [REPORTS] ✅ Model set: income=${budgetStatus.value?.monthly.income} spent=${budgetStatus.value?.monthly.spent} weeks=${budgetStatus.value?.weeksBreakdown.length}');
+        budgetStatus.refresh();
+      } else {
+        debugPrint('[PCB_APP] [REPORTS] ❌ isSuccess=${response.isSuccess} body=${response.body}');
+      }
+    } catch (e, stack) {
+      debugPrint('[PCB_APP] [ERROR] BudgetStatus Catch: $e\n$stack');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
 
   DateTime get startOfMonth => DateTime(selectedYear.value, selectedMonthIndex.value + 1, 1);
   DateTime get endOfMonth => DateTime(selectedYear.value, selectedMonthIndex.value + 2, 0);
