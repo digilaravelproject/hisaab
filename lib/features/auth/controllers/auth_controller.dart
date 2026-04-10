@@ -43,6 +43,7 @@ class AuthController extends GetxController {
 
   final isLoading = false.obs;
   final currentMobile = ''.obs;
+  final receivedOtp = Rx<int?>(null);
   Rx<UserModel?> currentUser = Rx<UserModel?>(null);
 
   final loginFormKey = GlobalKey<FormState>();
@@ -86,6 +87,7 @@ class AuthController extends GetxController {
       final result = await _sendOtpUseCase.execute(mobile);
 
       if (result != null) {
+        receivedOtp.value = result.otpDebug;
         CustomSnackbar.showSuccess(result.message, title: 'Success');
         Get.to(
           () => OtpScreen1(mobileNumber: mobile),

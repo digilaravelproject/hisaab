@@ -13,6 +13,7 @@ class TransactionHelper {
       case 'travel': return Icons.flight_takeoff_rounded;
       case 'entertainment': return Icons.movie_outlined;
       case 'health': return Icons.medical_services_outlined;
+      case 'business': return Icons.business_center_rounded;
       default: return Icons.category_outlined;
     }
   }

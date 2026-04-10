@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/custom_snackbar.dart';
+import '../domain/repositories/transaction_repository.dart';
 
 enum TransactionType { income, expense, cash, bank }
 enum TransactionScope { business, personal }
@@ -30,11 +32,54 @@ class TransactionModel {
     this.note,
     this.isUncategorized = false,
   });
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    // Determine scope: If business object exists and name is NOT 'Personal', it's Business.
+    // Otherwise, if business is null, 0, or "0", it's Personal.
+    TransactionScope scope = TransactionScope.personal;
+    
+    final businessData = json['business'];
+    if (businessData != null) {
+      if (businessData is Map) {
+        // It's a nested object
+        if (businessData['name'] != 'Personal' && businessData['id'] != null && businessData['id'].toString() != "0") {
+          scope = TransactionScope.business;
+        } else {
+          scope = TransactionScope.personal;
+        }
+      } else {
+        // It might be a direct ID
+        final bId = businessData.toString();
+        if (bId != "0" && bId != "" && bId != "3") { // Assuming 3 is Personal as per AddEntryScreen
+          scope = TransactionScope.business;
+        } else {
+          scope = TransactionScope.personal;
+        }
+      }
+    }
+
+    return TransactionModel(
+      id: json['id']?.toString() ?? '',
+      purpose: json['description'] ?? '',
+      amount: json['amount'] != null ? double.parse(json['amount'].toString()) : 0.0,
+      isCredit: json['type'] == 'credit',
+      date: json['transaction_date'] != null ? DateTime.parse(json['transaction_date']) : DateTime.now(),
+      category: json['category']?['name'] ?? 'Uncategorized',
+      account: (json['source']?.toString() ?? 'Cash').capitalizeFirst ?? 'Cash',
+      scope: scope,
+      note: json['description'],
+    );
+  }
 }
 
 class TransactionController extends GetxController {
+  final TransactionRepository _repository;
+  TransactionController({required TransactionRepository repository}) : _repository = repository;
+
   final allTransactions = <TransactionModel>[].obs;
   final filteredTransactions = <TransactionModel>[].obs;
+  final isLoading = false.obs;
+  final isSaving = false.obs;
   
   final searchQuery = ''.obs;
   final selectedType = 'All'.obs; 
@@ -45,24 +90,133 @@ class TransactionController extends GetxController {
   final startDate = Rx<DateTime?>(null);
   final endDate = Rx<DateTime?>(null);
 
+  // Pagination state
+  int _currentPage = 1;
+  int _lastPage = 1;
+  final isMoreDataAvailable = true.obs;
+  final isPaginationLoading = false.obs;
+
+  // ... (rest of the controller remains same)
+  
+  Future<bool> addTransaction(Map<String, dynamic> data) async {
+    try {
+      isSaving.value = true;
+      final response = await _repository.createTransaction(data);
+      if (response.isSuccess) {
+        CustomSnackbar.showSuccess(response.message);
+        loadTransactions(isRefresh: true);
+        return true;
+      } else {
+        CustomSnackbar.showError(response.message);
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Operation failed: $e');
+    } finally {
+      isSaving.value = false;
+    }
+    return false;
+  }
+
   // Temporary states for the Filter Bottom Sheet session
   final tempType = 'All'.obs;
   final tempSort = 'Latest first'.obs;
   final tempCategory = 'All'.obs;
+  final tempCategoryId = Rx<int?>(null);
   final tempAccount = 'All'.obs;
   final tempScope = 'All'.obs;
   final tempStart = Rx<DateTime?>(null);
   final tempEnd = Rx<DateTime?>(null);
 
+  final selectedCategoryId = Rx<int?>(null);
   final categories = <String>[].obs;
   final accounts = <String>[].obs;
+  final isSearchLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    _loadMockData();
-    _extractFilterOptions();
-    applyFilters();
+    loadTransactions();
+    
+    // Debounce search API calls
+    debounce(searchQuery, (_) {
+      if (searchQuery.value.isNotEmpty) {
+        searchTransactions(searchQuery.value);
+      } else {
+        loadTransactions(isRefresh: true);
+      }
+    }, time: const Duration(milliseconds: 500));
+  }
+
+  Future<void> loadTransactions({bool isRefresh = false}) async {
+    if (isRefresh) {
+      _currentPage = 1;
+      isMoreDataAvailable.value = true;
+    }
+
+    if (!isMoreDataAvailable.value || (isPaginationLoading.value && !isRefresh)) return;
+
+    try {
+      if (isRefresh) {
+        isLoading.value = true;
+      } else {
+        isPaginationLoading.value = true;
+      }
+
+      final Map<String, dynamic> params = {
+        'page': _currentPage.toString(),
+        'per_page': '20',
+      };
+      
+      // Category Filter
+      if (selectedCategoryId.value != null && selectedCategory.value != 'All') {
+        params['category_id'] = selectedCategoryId.value.toString();
+      }
+
+      // Type Filter
+      if (selectedType.value != 'All') {
+        if (selectedType.value == 'Income') params['type'] = 'credit';
+        else if (selectedType.value == 'Expense') params['type'] = 'debit';
+      }
+
+      // Account Filter (Maps to 'source' in API)
+      if (selectedAccount.value != 'All') {
+        params['source'] = selectedAccount.value.toLowerCase();
+      }
+
+      final response = await _repository.getTransactions(params);
+      
+      if (response.isSuccess && response.body is List) {
+        final List<dynamic> list = response.body;
+        final newTransactions = list.map((json) => TransactionModel.fromJson(json)).toList();
+
+        if (isRefresh) {
+          allTransactions.assignAll(newTransactions);
+        } else {
+          allTransactions.addAll(newTransactions);
+        }
+
+        // Handle meta for pagination
+        if (response.meta != null) {
+          _currentPage = response.meta!['current_page'] ?? _currentPage;
+          _lastPage = response.meta!['last_page'] ?? _lastPage;
+          isMoreDataAvailable.value = _currentPage < _lastPage;
+          if (isMoreDataAvailable.value) {
+            _currentPage++;
+          }
+        } else {
+          isMoreDataAvailable.value = false;
+        }
+        if (selectedCategoryId.value == null || selectedCategory.value == 'All') {
+          _extractFilterOptions();
+        }
+        applyFilters();
+      }
+    } catch (e) {
+      // Silently handle error as requested
+    } finally {
+      isLoading.value = false;
+      isPaginationLoading.value = false;
+    }
   }
 
 
@@ -71,21 +225,67 @@ class TransactionController extends GetxController {
     tempType.value = selectedType.value;
     tempSort.value = selectedSort.value;
     tempCategory.value = selectedCategory.value;
+    tempCategoryId.value = selectedCategoryId.value;
     tempAccount.value = selectedAccount.value;
     tempScope.value = selectedScope.value;
     tempStart.value = startDate.value;
     tempEnd.value = endDate.value;
   }
 
+  // Financial Summary Methods for Home Screen
+  double getTotalIncome(TransactionScope scope) {
+    return allTransactions
+        .where((tx) => tx.scope == scope && tx.isCredit)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  double getTotalExpense(TransactionScope scope) {
+    return allTransactions
+        .where((tx) => tx.scope == scope && !tx.isCredit)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  double getNetBalance(TransactionScope scope) {
+    return getTotalIncome(scope) - getTotalExpense(scope);
+  }
+
+  // Today activity
+  double getTodayCredit(TransactionScope scope) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return allTransactions
+        .where((tx) => 
+            tx.scope == scope && 
+            tx.isCredit && 
+            tx.date.year == today.year && 
+            tx.date.month == today.month && 
+            tx.date.day == today.day)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  double getTodayDebit(TransactionScope scope) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return allTransactions
+        .where((tx) => 
+            tx.scope == scope && 
+            !tx.isCredit && 
+            tx.date.year == today.year && 
+            tx.date.month == today.month && 
+            tx.date.day == today.day)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
   void commitFilters() {
     selectedType.value = tempType.value;
     selectedSort.value = tempSort.value;
     selectedCategory.value = tempCategory.value;
+    selectedCategoryId.value = tempCategoryId.value;
     selectedAccount.value = tempAccount.value;
     selectedScope.value = tempScope.value;
     startDate.value = tempStart.value;
     endDate.value = tempEnd.value;
-    applyFilters();
+    loadTransactions(isRefresh: true);
   }
 
   void _extractFilterOptions() {
@@ -98,127 +298,6 @@ class TransactionController extends GetxController {
     accounts.assignAll(['All', ...accs]);
   }
 
-  void _loadMockData() {
-    final now = DateTime.now();
-    final lastMonth = DateTime(now.year, now.month - 1, now.day);
-    
-    allTransactions.assignAll([
-      // Current Month Transactions
-      TransactionModel(
-        id: '1',
-        purpose: 'Office Rent - March',
-        amount: 35000.0,
-        isCredit: false,
-        date: now.subtract(const Duration(days: 2)),
-        category: 'Rent',
-        account: 'HDFC Bank',
-        scope: TransactionScope.business,
-        hasAttachment: true,
-      ),
-      TransactionModel(
-        id: '2',
-        purpose: 'Freelance UI Design Payment',
-        amount: 55000.0,
-        isCredit: true,
-        date: now.subtract(const Duration(days: 1)),
-        category: 'Income',
-        account: 'ICICI Bank',
-        scope: TransactionScope.business,
-      ),
-      TransactionModel(
-        id: '3',
-        purpose: 'Grocery Shopping - Reliance Fresh',
-        amount: 4200.0,
-        isCredit: false,
-        date: now.subtract(const Duration(days: 3)),
-        category: 'Food',
-        account: 'Cash',
-        scope: TransactionScope.personal,
-      ),
-      TransactionModel(
-        id: '4',
-        purpose: 'Petrol - Bharat Petroleum',
-        amount: 3500.0,
-        isCredit: false,
-        date: now.subtract(const Duration(days: 4)),
-        category: 'Transport',
-        account: 'ICICI Bank',
-        scope: TransactionScope.personal,
-      ),
-      TransactionModel(
-        id: '5',
-        purpose: 'Amazon - Electronics Purchase',
-        amount: 12000.0,
-        isCredit: false,
-        date: now.subtract(const Duration(days: 5)),
-        category: 'Shopping',
-        account: 'HDFC Bank',
-        scope: TransactionScope.business,
-      ),
-      TransactionModel(
-        id: '6',
-        purpose: 'Electricity Bill',
-        amount: 2800.0,
-        isCredit: false,
-        date: now.subtract(const Duration(days: 10)),
-        category: 'Utilities',
-        account: 'HDFC Bank',
-        scope: TransactionScope.personal,
-      ),
-      TransactionModel(
-        id: '7',
-        purpose: 'Gym Membership',
-        amount: 1500.0,
-        isCredit: false,
-        date: now.subtract(const Duration(days: 12)),
-        category: 'Health',
-        account: 'Cash',
-        scope: TransactionScope.personal,
-      ),
-      
-      // Last Month Transactions (for comparison)
-      TransactionModel(
-        id: '101',
-        purpose: 'Previous Month Salary',
-        amount: 80000.0,
-        isCredit: true,
-        date: lastMonth,
-        category: 'Salary',
-        account: 'HDFC Bank',
-        scope: TransactionScope.personal,
-      ),
-      TransactionModel(
-        id: '102',
-        purpose: 'Old Office Rent',
-        amount: 35000.0,
-        isCredit: false,
-        date: lastMonth.subtract(const Duration(days: 5)),
-        category: 'Rent',
-        account: 'HDFC Bank',
-        scope: TransactionScope.business,
-      ),
-      TransactionModel(
-        id: '103',
-        purpose: 'Bulk Purchase - Inventory',
-        amount: 25000.0,
-        isCredit: false,
-        date: lastMonth.subtract(const Duration(days: 10)),
-        category: 'Shopping',
-        account: 'ICICI Bank',
-        scope: TransactionScope.business,
-      ),
-      TransactionModel(
-        id: '104',
-        purpose: 'Dinner Party',
-        amount: 8500.0,
-        isCredit: false,
-        date: lastMonth.subtract(const Duration(days: 2)),
-        category: 'Food',
-        account: 'Cash',
-        scope: TransactionScope.personal,
-      ),
-    ]);
-  }
 
   void applyFilters() {
     var results = allTransactions.where((tx) {
@@ -266,16 +345,43 @@ class TransactionController extends GetxController {
     selectedType.value = 'All';
     selectedSort.value = 'Latest first';
     selectedCategory.value = 'All';
+    selectedCategoryId.value = null;
     selectedAccount.value = 'All';
     selectedScope.value = 'All';
     startDate.value = null;
     endDate.value = null;
-    applyFilters();
+    loadTransactions(isRefresh: true);
   }
 
   void setSearch(String query) {
     searchQuery.value = query;
-    applyFilters();
+  }
+
+  Future<void> searchTransactions(String query) async {
+    if (query.isEmpty) return;
+    
+    try {
+      isSearchLoading.value = true;
+      final response = await _repository.searchTransactions(query);
+      
+      if (response.isSuccess && response.body is List) {
+        final List<dynamic> list = response.body;
+        final searchResults = list.map((json) => TransactionModel.fromJson(json)).toList();
+        
+        // When searching, we temporarily replace allTransactions with search results
+        // so that the existing applyFilters logic still works for sorting/filtering.
+        allTransactions.assignAll(searchResults);
+        
+        // Reset pagination for search results
+        isMoreDataAvailable.value = false; 
+        
+        applyFilters();
+      }
+    } catch (e) {
+      // Silently handle
+    } finally {
+      isSearchLoading.value = false;
+    }
   }
 
   void setType(String type) {
@@ -288,9 +394,22 @@ class TransactionController extends GetxController {
     applyFilters();
   }
 
-  void deleteTransaction(String id) {
-    allTransactions.removeWhere((tx) => tx.id == id);
-    applyFilters();
+  Future<bool> deleteTransaction(String id) async {
+    try {
+      final response = await _repository.deleteTransaction(id);
+      if (response.isSuccess) {
+        allTransactions.removeWhere((tx) => tx.id == id);
+        applyFilters();
+        CustomSnackbar.showSuccess(response.message);
+        return true;
+      } else {
+        CustomSnackbar.showError(response.message);
+        return false;
+      }
+    } catch (e) {
+      CustomSnackbar.showError('Failed to delete transaction: $e');
+      return false;
+    }
   }
 
   Map<String, List<TransactionModel>> get groupedTransactions {
@@ -333,7 +452,7 @@ class TransactionController extends GetxController {
       case 'Sort': return tempSort.value != 'Latest first';
       case 'Category': return tempCategory.value != 'All';
       case 'Account': return tempAccount.value != 'All';
-      case 'Business': return tempScope.value != 'All';
+      case 'Scope': return tempScope.value != 'All';
       case 'Date': return tempStart.value != null || tempEnd.value != null;
       default: return false;
     }
@@ -343,6 +462,7 @@ class TransactionController extends GetxController {
     tempType.value = 'All';
     tempSort.value = 'Latest first';
     tempCategory.value = 'All';
+    tempCategoryId.value = null;
     tempAccount.value = 'All';
     tempScope.value = 'All';
     tempStart.value = null;

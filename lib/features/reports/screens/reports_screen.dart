@@ -35,19 +35,22 @@ class ReportsScreen extends GetView<ReportsController> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildMonthSelector(),
-            if (controller.businesses.length > 2) _buildBusinessSelector(),
-            _buildSummaryCards(),
-            _buildIncomeExpenseChart(),
-            _buildCategoryBreakdown(),
-            _buildComparisonCard(),
-            const SizedBox(height: 120),
-          ],
+      body: RefreshIndicator(
+        onRefresh: () => controller.transactionController.loadTransactions(isRefresh: true),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMonthSelector(),
+              if (controller.businesses.length > 2) _buildBusinessSelector(),
+              _buildSummaryCards(),
+              _buildIncomeExpenseChart(),
+              _buildCategoryBreakdown(),
+              _buildComparisonCard(),
+              const SizedBox(height: 120),
+            ],
+          ),
         ),
       ),
     );

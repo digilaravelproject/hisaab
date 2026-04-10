@@ -33,4 +33,10 @@ class BusinessDetailController extends GetxController {
     BusinessTransaction(title: 'Software Subscription', date: 'Feb 22, 2026', amount: 1200, isIncome: false),
     BusinessTransaction(title: 'Project Milestone - B', date: 'Feb 20, 2026', amount: 25000, isIncome: true),
   ].obs;
+
+  Future<void> refreshData() async {
+    // Simulated refresh delay
+    await Future.delayed(const Duration(seconds: 1));
+    // In a real app, you would fetch fresh data from the repository here
+  }
 }

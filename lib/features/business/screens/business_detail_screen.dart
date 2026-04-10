@@ -20,17 +20,21 @@ class BusinessDetailScreen extends StatelessWidget {
         backgroundColor: AppColors.primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(Dimensions.height20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSummaryCards(controller),
-            SizedBox(height: Dimensions.height30),
-            _buildTrendSection(controller),
-            SizedBox(height: Dimensions.height30),
-            _buildTransactionList(controller),
-          ],
+      body: RefreshIndicator(
+        onRefresh: () => controller.refreshData(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
+          padding: EdgeInsets.all(Dimensions.height20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSummaryCards(controller),
+              SizedBox(height: Dimensions.height30),
+              _buildTrendSection(controller),
+              SizedBox(height: Dimensions.height30),
+              _buildTransactionList(controller),
+            ],
+          ),
         ),
       ),
     );

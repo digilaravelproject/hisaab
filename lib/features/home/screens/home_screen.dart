@@ -29,34 +29,42 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTopAppBar(authController),
-              SizedBox(height: Dimensions.height15),
-              _buildSegmentedToggle(),
-              SizedBox(height: Dimensions.height20),
-              
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
-                child: Column(
-                  children: [
-                    _buildTotalBalanceCard(),
-                    SizedBox(height: Dimensions.height20),
-                    _buildTodaySummaryCard(),
-                    SizedBox(height: Dimensions.height20),
-                    _buildWeeklyBudgetCard(),
-                    SizedBox(height: Dimensions.height20),
-                    Obx(() => _buildRecentTransactions()),
-                    SizedBox(height: 100), // Padding to clear the bottom nav bar / FAB
-                  ],
-                ),
+        child: Obx(() {
+          if (transactionController.isLoading.value && transactionController.allTransactions.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return RefreshIndicator(
+            onRefresh: () => transactionController.loadTransactions(isRefresh: true),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTopAppBar(authController),
+                  SizedBox(height: Dimensions.height15),
+                  _buildSegmentedToggle(),
+                  SizedBox(height: Dimensions.height20),
+                  
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+                    child: Column(
+                      children: [
+                        _buildTotalBalanceCard(),
+                        SizedBox(height: Dimensions.height20),
+                        _buildTodaySummaryCard(),
+                        SizedBox(height: Dimensions.height20),
+                        _buildWeeklyBudgetCard(),
+                        SizedBox(height: Dimensions.height20),
+                        _buildRecentTransactions(),
+                        const SizedBox(height: 100), // Padding to clear the bottom nav bar / FAB
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -358,17 +366,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
   // 6️⃣ Recent Transactions Section
   Widget _buildRecentTransactions() {
+    // Explicitly grab the list to register reactivity properly in GetX Obx
+    final allTxs = transactionController.allTransactions.toList();
     final scope = isPersonal ? TransactionScope.personal : TransactionScope.business;
-    final transactions = transactionController.allTransactions
+    
+    final transactions = allTxs
         .where((tx) => tx.scope == scope)
         .toList();
     
     // Sort by date latest first and take top 5
     transactions.sort((a, b) => b.date.compareTo(a.date));
     final recentTransactions = transactions.take(5).toList();
+
+    // Small hack: if we have NO transitions at all and we aren't loading, try one more fetch
+    if (allTxs.isEmpty && !transactionController.isLoading.value) {
+      Future.microtask(() => transactionController.loadTransactions());
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

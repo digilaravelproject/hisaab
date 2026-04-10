@@ -283,7 +283,7 @@ class ApiChecker {
       );
     }
 
-    if (statusCode != 200) {
+    if (statusCode != 200 && statusCode != 201) {
       if (response.data != null) {
         try {
           final responseModel = ResponseModel.fromJson(response.data, statusCode: statusCode);

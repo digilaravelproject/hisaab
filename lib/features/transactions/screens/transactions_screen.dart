@@ -8,6 +8,8 @@ import '../../../core/utils/custom_snackbar.dart';
 import '../../../core/utils/transaction_helper.dart';
 import '../../../core/utils/transaction_action_sheet.dart';
 import '../controllers/transaction_controller.dart';
+import '../controllers/category_controller.dart';
+import '../domain/models/category_model.dart';
 import '../../settings/controllers/settings_controller.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -20,6 +22,7 @@ class TransactionsScreen extends StatefulWidget {
 class _TransactionsScreenState extends State<TransactionsScreen> {
   final TransactionController controller = Get.find();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -27,6 +30,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     _searchController.addListener(() {
       controller.setSearch(_searchController.text);
     });
+    
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        controller.loadTransactions(isRefresh: false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -64,28 +80,46 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           child: Container(color: Colors.grey.shade100, height: 1),
         ),
       ),
-      body: Column(
-        children: [
-          _buildUncategorizedBanner(),
-          _buildStickySearchBar(),
-          Expanded(
-            child: Obx(() {
-              final groups = controller.groupedTransactions;
-              if (groups.isEmpty) {
-                return _buildEmptyState();
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 200),
-                itemCount: groups.length,
-                itemBuilder: (context, index) {
-                  final date = groups.keys.elementAt(index);
-                  final txs = groups[date]!;
-                  return _buildGroupedSection(date, txs);
-                },
-              );
-            }),
+      body: RefreshIndicator(
+        onRefresh: () => controller.loadTransactions(isRefresh: true),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildUncategorizedBanner(),
+              _buildStickySearchBar(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Obx(() {
+                  final groups = controller.groupedTransactions;
+                  if (groups.isEmpty) {
+                    return SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.6,
+                      child: _buildEmptyState(),
+                    );
+                  }
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(top: 8, bottom: 200),
+                    itemCount: groups.length + (controller.isPaginationLoading.value ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == groups.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        );
+                      }
+                      final date = groups.keys.elementAt(index);
+                      final txs = groups[date]!;
+                      return _buildGroupedSection(date, txs);
+                    },
+                  );
+                }),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.small(
@@ -135,24 +169,28 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildStickySearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.slate100,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search transactions...',
-            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-            prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 18),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.slate100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search transactions...',
+                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 18),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
           ),
         ),
-      ),
+  ]
     );
   }
 
@@ -198,12 +236,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       key: Key(tx.id),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          return await TransactionActionSheet.confirmDelete(context);
+          final confirmed = await TransactionActionSheet.confirmDelete(context);
+          if (confirmed == true) {
+            return await controller.deleteTransaction(tx.id);
+          }
+          return false;
         } else {
           return false;
         }
       },
-      onDismissed: (_) => controller.deleteTransaction(tx.id),
+      onDismissed: (_) {
+         // Data already removed from controller in confirmDismiss if successful
+      },
       background: _buildSwipeAction(Icons.edit_outlined, Colors.blue, Alignment.centerLeft),
       secondaryBackground: _buildSwipeAction(Icons.delete_outline_rounded, Colors.red, Alignment.centerRight),
       child: InkWell(
@@ -506,7 +550,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildTypeOptions() {
-    final options = ['All', 'Income', 'Expense', 'Cash', 'Bank'];
+    final options = ['Credit', 'Debit'];
     return ListView(
       padding: const EdgeInsets.all(16),
       children: options.map((opt) => _buildSelectionItem(opt, controller.tempType)).toList(),
@@ -514,17 +558,82 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildCategoryOptions() {
-    return Obx(() => ListView(
-      padding: const EdgeInsets.all(16),
-      children: controller.categories.map((opt) => _buildSelectionItem(opt, controller.tempCategory)).toList(),
-    ));
+    final catController = Get.find<CategoryController>();
+    return Obx(() {
+      final allCats = [
+        CategoryModel(id: 0, name: 'All', type: '', icon: '', isCustom: false),
+        ...catController.categories,
+      ];
+      
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: allCats.length,
+        itemBuilder: (context, index) {
+          final cat = allCats[index];
+          return Obx(() {
+            final isSelected = controller.tempCategory.value == cat.name;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primaryColor.withOpacity(0.08) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? AppColors.primaryColor.withOpacity(0.2) : Colors.transparent,
+                  width: 1,
+                ),
+              ),
+              child: ListTile(
+                onTap: () {
+                  controller.tempCategory.value = cat.name;
+                  controller.tempCategoryId.value = cat.id == 0 ? null : cat.id;
+                },
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primaryColor.withOpacity(0.15) : Colors.grey.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: cat.id == 0 
+                      ? Icon(Icons.apps_rounded, color: isSelected ? AppColors.primaryColor : Colors.grey.shade400, size: 20)
+                      : Icon(TransactionHelper.getCategoryIcon(cat.name), color: isSelected ? AppColors.primaryColor : Colors.grey.shade400, size: 20),
+                ),
+                title: Text(
+                  cat.name, 
+                  style: TextStyle(
+                    fontSize: 15, 
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? AppColors.primaryColor : AppColors.slate800,
+                  ),
+                ),
+                trailing: Radio<String>(
+                  value: cat.name,
+                  groupValue: controller.tempCategory.value,
+                  onChanged: (val) {
+                    controller.tempCategory.value = cat.name;
+                    controller.tempCategoryId.value = cat.id == 0 ? null : cat.id;
+                  },
+                  activeColor: AppColors.primaryColor,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            );
+          });
+        },
+      );
+    });
   }
 
   Widget _buildAccountOptions() {
-    return Obx(() => ListView(
+    final options = ['All', 'Cash', 'Bank', 'UPI'];
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: controller.accounts.map((opt) => _buildSelectionItem(opt, controller.tempAccount)).toList(),
-    ));
+      itemCount: options.length,
+      itemBuilder: (context, index) {
+        final opt = options[index];
+        return _buildSelectionItem(opt, controller.tempAccount);
+      },
+    );
   }
 
   Widget _buildDateOptions(BuildContext context) {
@@ -632,15 +741,26 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget _buildSelectionItem(String label, RxString observable) {
     return Obx(() {
       final isSelected = observable.value == label;
-      return ListTile(
-        onTap: () => observable.value = label,
-        contentPadding: EdgeInsets.zero,
-        title: Text(label, style: TextStyle(fontSize: 14, color: isSelected ? AppColors.primaryColor : Colors.black87)),
-        trailing: Radio<String>(
-          value: label,
-          groupValue: observable.value,
-          onChanged: (val) => observable.value = val!,
-          activeColor: AppColors.primaryColor,
+      return Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryColor.withOpacity(0.05) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          onTap: () => observable.value = label,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: Text(
+            label, 
+            style: TextStyle(
+              fontSize: 14, 
+              color: isSelected ? AppColors.primaryColor : AppColors.slate800,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          trailing: isSelected 
+              ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryColor, size: 20)
+              : null,
         ),
       );
     });

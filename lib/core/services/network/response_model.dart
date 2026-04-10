@@ -4,6 +4,7 @@ class ResponseModel {
   final dynamic body;
   final int? statusCode;
   final List<ErrorDetail>? errors;
+  final Map<String, dynamic>? meta;
 
   const ResponseModel({
     required this.isSuccess,
@@ -11,6 +12,7 @@ class ResponseModel {
     this.body,
     this.statusCode,
     this.errors,
+    this.meta,
   });
 
   /// Factory method to create ResponseModel from JSON
@@ -28,13 +30,14 @@ class ResponseModel {
     }
 
     return ResponseModel(
-      isSuccess: success && (statusCode == 200 || statusCode == null),
+      isSuccess: success && (statusCode == 200 || statusCode == 201 || statusCode == null),
       message: json['msg']?.toString() ??
           json['message']?.toString() ??
           (success ? 'Success' : 'Something went wrong'),
       body: json['data'],
       statusCode: statusCode,
       errors: errors,
+      meta: json['meta'],
     );
   }
 
@@ -45,6 +48,7 @@ class ResponseModel {
     'data': body,
     'statusCode': statusCode,
     'errors': errors?.map((e) => e.toJson()).toList(),
+    'meta': meta,
   };
 
   /// Create a copy with updated fields
@@ -54,6 +58,7 @@ class ResponseModel {
     dynamic body,
     int? statusCode,
     List<ErrorDetail>? errors,
+    Map<String, dynamic>? meta,
   }) {
     return ResponseModel(
       isSuccess: isSuccess ?? this.isSuccess,
@@ -61,6 +66,7 @@ class ResponseModel {
       body: body ?? this.body,
       statusCode: statusCode ?? this.statusCode,
       errors: errors ?? this.errors,
+      meta: meta ?? this.meta,
     );
   }
 

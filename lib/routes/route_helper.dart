@@ -35,9 +35,13 @@ import '../features/settings/screens/terms_screen.dart';
 import '../features/settings/screens/data_backup_screen.dart';
 import '../features/profile/bindings/profile_binding.dart';
 import '../features/help_support/bindings/help_support_binding.dart';
+import '../features/transactions/domain/repositories/transaction_repository.dart';
+import '../features/transactions/domain/repositories/category_repository.dart';
+import '../features/transactions/controllers/category_controller.dart';
 import 'app_routes.dart';
 
 class RouteHelper {
+  // ... existing methods
   static String getSplashRoute() => AppRoutes.splash;
   static String getLoginRoute() => AppRoutes.login;
   static String getSignupRoute() => AppRoutes.signup;
@@ -87,7 +91,10 @@ class RouteHelper {
       name: AppRoutes.home,
       page: () => const HomeScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut(() => TransactionController(), fenix: true);
+        Get.lazyPut(() => TransactionRepository(apiClient: Get.find<ApiClient>()));
+        Get.lazyPut(() => TransactionController(repository: Get.find<TransactionRepository>()), fenix: true);
+        Get.lazyPut(() => CategoryRepository(apiClient: Get.find<ApiClient>()));
+        Get.lazyPut(() => CategoryController(repository: Get.find<CategoryRepository>()), fenix: true);
         Get.lazyPut(() => DashboardController(), fenix: true);
       }),
       transition: Transition.fadeIn,
@@ -126,8 +133,9 @@ class RouteHelper {
       name: AppRoutes.dashboard,
       page: () => const DashboardScreen(),
       binding: BindingsBuilder(() {
+        Get.lazyPut(() => TransactionRepository(apiClient: Get.find<ApiClient>()));
         Get.lazyPut(() => DashboardController());
-        Get.lazyPut(() => TransactionController());
+        Get.lazyPut(() => TransactionController(repository: Get.find<TransactionRepository>()));
         Get.lazyPut(() => BusinessController());
         Get.lazyPut(() => ReportsController());
         Get.lazyPut(() => SettingsRepository(Get.find<ApiClient>()));
@@ -135,6 +143,8 @@ class RouteHelper {
         Get.lazyPut(() => ProfileRepository(Get.find<ApiClient>()));
         Get.lazyPut(() => ProfileService(Get.find<ProfileRepository>()));
         Get.lazyPut(() => SettingsController(Get.find<SettingsService>(), Get.find<ProfileService>()));
+        Get.lazyPut(() => CategoryRepository(apiClient: Get.find<ApiClient>()));
+        Get.lazyPut(() => CategoryController(repository: Get.find<CategoryRepository>()), fenix: true);
         Get.lazyPut(() => HomeController(), fenix: true);
         Get.lazyPut(() => BudgetController(), fenix: true);
       }),
@@ -153,6 +163,15 @@ class RouteHelper {
     GetPage(
       name: AppRoutes.addEntry,
       page: () => const AddEntryScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => TransactionRepository(apiClient: Get.find<ApiClient>()));
+        // Ensure TransactionController is available if not already put by home/dashboard
+        if (!Get.isRegistered<TransactionController>()) {
+          Get.lazyPut(() => TransactionController(repository: Get.find<TransactionRepository>()));
+        }
+        Get.lazyPut(() => CategoryRepository(apiClient: Get.find<ApiClient>()));
+        Get.lazyPut(() => CategoryController(repository: Get.find<CategoryRepository>()));
+      }),
       transition: Transition.rightToLeft,
     ),
     GetPage(

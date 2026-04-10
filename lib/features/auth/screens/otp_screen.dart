@@ -391,6 +391,16 @@ class _OtpScreen1State extends State<OtpScreen1>
                       ),
                     ),
 
+                    const SizedBox(height: 12),
+
+                    Obx(() => Text(
+                          "Otp is : ${_authController.receivedOtp.value ?? ''}",
+                          style: AppTextTheme.lightTextTheme.bodyMedium?.copyWith(
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )),
+
                     const SizedBox(height: 40),
 
                     // 4 OTP boxes

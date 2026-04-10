@@ -60,8 +60,7 @@ class TransactionActionSheet {
               onTap: () async {
                 Navigator.pop(context);
                 if (await confirmDelete(context)) {
-                  controller.deleteTransaction(tx.id);
-                  CustomSnackbar.showSuccess('Transaction deleted');
+                  await controller.deleteTransaction(tx.id);
                 }
               },
             ),
